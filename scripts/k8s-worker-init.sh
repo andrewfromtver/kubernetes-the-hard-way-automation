@@ -136,6 +136,7 @@ ExecStart=/usr/local/bin/kubelet \\
   --config=/var/lib/kubelet/kubelet-config.yaml \\
   --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \\
   --kubeconfig=/var/lib/kubelet/kubeconfig \\
+  --fail-swap-on=false \\
   --v=2
 Restart=on-failure
 RestartSec=${SERVICE_RESTART_INTERVAL}
