@@ -1,0 +1,3 @@
+.vagrant
+shared/*
+deployment.log
