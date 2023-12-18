@@ -1,3 +1,4 @@
 .vagrant
-shared/*
+shared/distr
+shared/k8s_*
 deployment.log
