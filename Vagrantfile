@@ -22,10 +22,9 @@ CNI_VERSION = "1.4.0"                                                   # cni ve
 CONTAINERD_VERSION = "1.7.11"                                           # containerd version
 ETCD_VERSION = "3.5.11"                                                 # etcd version
 CFSSL_VERSION = "1.6.4"                                                 # cfssl version
-CNI_VERSION = "1.0.0"                                                   # CNI version
 HELM_VERSION = "3.13.3"                                                 # HELM version
 
-CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
+CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and old keys
 
 ENCRYPTION_KEY = "VP8yCfSinFYiZTMb7zujTI+qsUoTenzCV40Rm+4t7VA="         # k8s encryption key
 
