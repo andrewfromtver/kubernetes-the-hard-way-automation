@@ -149,7 +149,7 @@ systemctl start kube-apiserver kube-controller-manager kube-scheduler
 
 # Setup monitoring
 apt-get update
-apt-get install -y nginx
+apt-get install -y nginx curl
 
 cat > kubernetes.default.svc.cluster.local <<EOF
 server {

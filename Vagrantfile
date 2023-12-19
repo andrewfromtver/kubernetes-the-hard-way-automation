@@ -2,58 +2,58 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-PROVIDER = "vmware_desktop"                                           # vmware_desktop or virtualbox
-PROVIDER_GUI = false                                                  # show vms in provider gui
-VM_BOX = "generic/debian12"                                           # vm OC
-VM_BOX_VERSION = "4.3.2"                                              # vm OC box version
+PROVIDER = "virtualbox"                                                 # vmware_desktop or virtualbox
+PROVIDER_GUI = false                                                    # show vms in provider gui
+VM_BOX = "debian/bookworm64"                                            # vm OC
+VM_BOX_VERSION = "12.20231211.1"                                        # vm OC box version
 
-ETCD_CPU = 2                                                          # CPU qty for ETCD node
-ETCD_RAM = 2048                                                       # RAM size for ETCD node
-CONTROLLER_CPU = 2                                                    # CPU qty for CONTROLLER node
-CONTROLLER_RAM = 2048                                                 # RAM size for CONTROLLER node
-WORKER_CPU = 2                                                        # CPU qty for WORKER node
-WORKER_RAM = 2048                                                     # RAM size for WORKER node
-HAPROXY_CPU = 2                                                       # CPU qty for HAPROXY
-HAPROXY_RAM = 2048                                                    # RAM size for HAPROXY
+ETCD_CPU = 2                                                            # CPU qty for ETCD node
+ETCD_RAM = 2048                                                         # RAM size for ETCD node
+CONTROLLER_CPU = 2                                                      # CPU qty for CONTROLLER node
+CONTROLLER_RAM = 2048                                                   # RAM size for CONTROLLER node
+WORKER_CPU = 4                                                          # CPU qty for WORKER node
+WORKER_RAM = 4096                                                       # RAM size for WORKER node
+HAPROXY_CPU = 2                                                         # CPU qty for HAPROXY
+HAPROXY_RAM = 2048                                                      # RAM size for HAPROXY
 
-K8S_VERSION = "1.28.0"                                                # k8s bin files version
-RUNC_VERSION = "1.1.10"                                               # runc version
-CNI_VERSION = "1.4.0"                                                 # cni version
-CONTAINERD_VERSION = "1.7.11"                                         # containerd version
-ETCD_VERSION = "3.5.11"                                               # etcd version
-CFSSL_VERSION = "1.6.4"                                               # cfssl version
-CNI_VERSION = "1.0.0"                                                 # CNI version
-HELM_VERSION = "3.13.3"                                               # HELM version
+K8S_VERSION = "1.28.0"                                                  # k8s bin files version
+RUNC_VERSION = "1.1.10"                                                 # runc version
+CNI_VERSION = "1.4.0"                                                   # cni version
+CONTAINERD_VERSION = "1.7.11"                                           # containerd version
+ETCD_VERSION = "3.5.11"                                                 # etcd version
+CFSSL_VERSION = "1.6.4"                                                 # cfssl version
+CNI_VERSION = "1.0.0"                                                   # CNI version
+HELM_VERSION = "3.13.3"                                                 # HELM version
 
-CLEAR_DEPLOYMENT = false                                              # do not use cashed distrs and old keys
+CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
 
-ENCRYPTION_KEY = "VP8yCfSinFYiZTMb7zujTI+qsUoTenzCV40Rm+4t7VA="       # k8s encryption key
+ENCRYPTION_KEY = "VP8yCfSinFYiZTMb7zujTI+qsUoTenzCV40Rm+4t7VA="         # k8s encryption key
 
-ETCD_IP_ARRAY = ["192.168.0.10", "192.168.0.11", "192.168.0.12"]      # 3 nodes etcd cluster
-CONTROLLERS_IP_ARRAY = ["192.168.0.13", "192.168.0.14"]               # 2 x controllers
-WORKERS_IP_ARRAY = ["192.168.0.15", "192.168.0.16", "192.168.0.17"]   # 3 x workers
-HAPROXY_IP = "192.168.0.100"                                          # cluster load balanser ip
+ETCD_IP_ARRAY = ["192.168.56.10", "192.168.56.11", "192.168.56.12"]     # 3 nodes etcd cluster
+CONTROLLERS_IP_ARRAY = ["192.168.56.13", "192.168.56.14"]               # 2 x controllers
+WORKERS_IP_ARRAY = ["192.168.56.15", "192.168.56.16", "192.168.56.17"]  # 3 x workers
+HAPROXY_IP = "192.168.56.100"                                           # cluster load balanser ip
 
-POD_CIDR = "10.50.0.0/24"                                             # pod cidr
-CLUSTER_CIDR = "10.100.0.0/16"                                        # cluster cidr
-SERVICE_CLUSTER_IP_RANGE = "10.32.0.0/24"                             # cluster ip range
-SERVICE_CLUSTER_DNS_IP = "10.32.0.10"                                 # cluster dns ip
-SERVICE_CLUSTER_GATEWAY = "10.32.0.1"                                 # cluster gateway ip
+POD_CIDR = "10.50.0.0/24"                                               # pod cidr
+CLUSTER_CIDR = "10.100.0.0/16"                                          # cluster cidr
+SERVICE_CLUSTER_IP_RANGE = "10.32.0.0/24"                               # cluster ip range
+SERVICE_CLUSTER_DNS_IP = "10.32.0.10"                                   # cluster dns ip
+SERVICE_CLUSTER_GATEWAY = "10.32.0.1"                                   # cluster gateway ip
 
-EXPIRY = "8760h"                                                      # cert expity
-ALGO = "rsa"                                                          # cert algo
-SIZE = 2048                                                           # cert size
-C = "US"                                                              # cetr country
-L = "Portland"                                                        # cert location
-O = "Kubernetes"                                                      # cert org.
-OU = "k8s sefhosted cluster"                                          # cert org. unit
-ST = "Oregon"                                                         # cert state
+EXPIRY = "8760h"                                                        # cert expity
+ALGO = "rsa"                                                            # cert algo
+SIZE = 2048                                                             # cert size
+C = "US"                                                                # cetr country
+L = "Portland"                                                          # cert location
+O = "Kubernetes"                                                        # cert org.
+OU = "k8s sefhosted cluster"                                            # cert org. unit
+ST = "Oregon"                                                           # cert state
 
-DISTR_SHARED_FOLDER_PATH = "/shared/distr"                            # distr folder
-KEYS_SHARED_FOLDER_PATH = "/shared/k8s_keys"                          # keys folder
-CONFIGS_SHARED_FOLDER_PATH = "/shared/k8s_configs"                    # configs folder
+DISTR_SHARED_FOLDER_PATH = "/shared/distr"                              # distr folder
+KEYS_SHARED_FOLDER_PATH = "/shared/k8s_keys"                            # keys folder
+CONFIGS_SHARED_FOLDER_PATH = "/shared/k8s_configs"                      # configs folder
 
-SERVICE_RESTART_INTERVAL = 5                                          # systemd service restart timer
+SERVICE_RESTART_INTERVAL = 5                                            # systemd service restart timer
 
 
 Vagrant.configure(2) do |config|
@@ -146,6 +146,7 @@ Vagrant.configure(2) do |config|
       }
       if (i == 3)
         node.vm.provision "shell", run: 'once', privileged: false, inline: <<-SHELL
+          sleep 5
           ETCDCTL_API=3 etcdctl member list \
             --endpoints=https://127.0.0.1:2379 \
             --cacert=/shared/k8s_keys/ca.pem \
@@ -223,6 +224,21 @@ Vagrant.configure(2) do |config|
           kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
         SHELL
       end
+      controller.trigger.after :up do
+        controller.vm.provision "shell", run: 'always', privileged: true, inline: <<-SHELL
+          swapoff -a
+          mkdir -p /run/systemd/resolve
+          echo "nameserver 8.8.8.8" > /etc/resolv.conf
+          echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+          echo "search localdomain" >> /etc/resolv.conf
+          echo "127.0.0.1 localhost" > /etc/hosts
+          echo "#{WORKERS_IP_ARRAY[0]} worker-1" >> /etc/hosts
+          echo "#{WORKERS_IP_ARRAY[1]} worker-2" >> /etc/hosts
+          echo "#{WORKERS_IP_ARRAY[2]} worker-3" >> /etc/hosts
+          ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
+          echo "Controller node resolve config done"      
+        SHELL
+      end
     end
   end
 
@@ -291,6 +307,21 @@ Vagrant.configure(2) do |config|
         "CONTAINERD_VERSION" => CONTAINERD_VERSION,
         "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
       }
+      worker.trigger.after :up do
+        worker.vm.provision "shell", run: 'always', privileged: true, inline: <<-SHELL
+          swapoff -a
+          mkdir -p /run/systemd/resolve
+          echo "nameserver 8.8.8.8" > /etc/resolv.conf
+          echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+          echo "search localdomain" >> /etc/resolv.conf
+          echo "127.0.0.1 localhost" > /etc/hosts
+          echo "#{WORKERS_IP_ARRAY[0]} worker-1" >> /etc/hosts
+          echo "#{WORKERS_IP_ARRAY[1]} worker-2" >> /etc/hosts
+          echo "#{WORKERS_IP_ARRAY[2]} worker-3" >> /etc/hosts
+          ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
+          echo "Worker node resolve config done"
+        SHELL
+      end
     end
   end
 
