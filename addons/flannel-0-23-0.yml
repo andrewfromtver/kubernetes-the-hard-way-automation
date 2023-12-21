@@ -69,7 +69,7 @@ data:
   cni-conf.json: |
     {
       "name": "cbr0",
-      "cniVersion": "1.4.0",
+      "cniVersion": "1.0.0",
       "plugins": [
         {
           "type": "flannel",

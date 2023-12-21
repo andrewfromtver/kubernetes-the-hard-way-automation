@@ -18,13 +18,13 @@ HAPROXY_RAM = 2048                                                      # RAM si
 
 K8S_VERSION = "1.28.0"                                                  # k8s bin files version
 RUNC_VERSION = "1.1.10"                                                 # runc version
-CNI_VERSION = "1.4.0"                                                   # cni version
+CNI_VERSION = "1.0.0"                                                   # cni version
 CONTAINERD_VERSION = "1.7.11"                                           # containerd version
 ETCD_VERSION = "3.5.11"                                                 # etcd version
 CFSSL_VERSION = "1.6.4"                                                 # cfssl version
 HELM_VERSION = "3.13.3"                                                 # HELM version
 
-CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and old keys
+CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
 
 ENCRYPTION_KEY = "VP8yCfSinFYiZTMb7zujTI+qsUoTenzCV40Rm+4t7VA="         # k8s encryption key
 
