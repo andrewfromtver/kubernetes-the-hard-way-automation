@@ -225,17 +225,13 @@ Vagrant.configure(2) do |config|
       end
       controller.trigger.after :up do
         controller.vm.provision "shell", run: 'always', privileged: true, inline: <<-SHELL
+          systemctl stop kube-apiserver kube-controller-manager kube-scheduler || \
+            echo "Services kube-apiserver kube-controller-manager kube-scheduler not started"
           swapoff -a
           mkdir -p /run/systemd/resolve
-          echo "nameserver 8.8.8.8" > /etc/resolv.conf
-          echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-          echo "search localdomain" >> /etc/resolv.conf
-          echo "127.0.0.1 localhost" > /etc/hosts
-          echo "#{WORKERS_IP_ARRAY[0]} worker-1" >> /etc/hosts
-          echo "#{WORKERS_IP_ARRAY[1]} worker-2" >> /etc/hosts
-          echo "#{WORKERS_IP_ARRAY[2]} worker-3" >> /etc/hosts
-          ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
-          echo "Controller node resolve config done"      
+          ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf || echo "File resolv.conf already exists"
+          systemctl start kube-apiserver kube-controller-manager kube-scheduler
+          echo "Controller node init done"
         SHELL
       end
     end
@@ -308,17 +304,18 @@ Vagrant.configure(2) do |config|
       }
       worker.trigger.after :up do
         worker.vm.provision "shell", run: 'always', privileged: true, inline: <<-SHELL
+          systemctl stop containerd kubelet kube-proxy || \
+            echo "Services containerd kubelet kube-proxy not started"
           swapoff -a
           mkdir -p /run/systemd/resolve
           echo "nameserver 8.8.8.8" > /etc/resolv.conf
           echo "nameserver 8.8.4.4" >> /etc/resolv.conf
           echo "search localdomain" >> /etc/resolv.conf
-          echo "127.0.0.1 localhost" > /etc/hosts
-          echo "#{WORKERS_IP_ARRAY[0]} worker-1" >> /etc/hosts
-          echo "#{WORKERS_IP_ARRAY[1]} worker-2" >> /etc/hosts
-          echo "#{WORKERS_IP_ARRAY[2]} worker-3" >> /etc/hosts
-          ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
-          echo "Worker node resolve config done"
+          ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf || echo "File resolv.conf already exists"
+          mkdir /sys/fs/cgroup/systemd
+          mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
+          systemctl start containerd kubelet kube-proxy
+          echo "Worker node init done"
         SHELL
       end
     end
