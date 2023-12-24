@@ -2,19 +2,29 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-PROVIDER = "virtualbox"                                                 # vmware_desktop or virtualbox
-PROVIDER_GUI = false                                                    # show vms in provider gui
-VM_BOX = "debian/bookworm64"                                            # vm OC
-VM_BOX_VERSION = "12.20231211.1"                                        # vm OC box version
+require "yaml"
 
-ETCD_CPU = 2                                                            # CPU qty for ETCD node
-ETCD_RAM = 2048                                                         # RAM size for ETCD node
-CONTROLLER_CPU = 2                                                      # CPU qty for CONTROLLER node
-CONTROLLER_RAM = 2048                                                   # RAM size for CONTROLLER node
+current_dir = File.dirname(File.expand_path(__FILE__))
+smb_creds = YAML.load_file("#{current_dir}/smb_creds.yaml")
+
+PROVIDER = "hyperv"                                                     # vmware_desktop, virtualbox, hyperv
+PROVIDER_GUI = false                                                    # show vms in provider gui
+VM_BOX = "generic/debian12"                                             # vm OC
+VM_BOX_VERSION = "4.3.2"                                                # vm OC box version
+
+SMB_USER = smb_creds["username"]                                        # SMB user for hyperv provider folder sync
+SMB_PASSWORD = smb_creds["password"]                                    # SMB password for hyperv provider folder sync
+
+HYPERV_SWITCH = "k8s-net"                                               # Hyper-V switch name
+
+ETCD_CPU = 1                                                            # CPU qty for ETCD node
+ETCD_RAM = 1024                                                         # RAM size for ETCD node
+CONTROLLER_CPU = 1                                                      # CPU qty for CONTROLLER node
+CONTROLLER_RAM = 1024                                                   # RAM size for CONTROLLER node
 WORKER_CPU = 4                                                          # CPU qty for WORKER node
 WORKER_RAM = 4096                                                       # RAM size for WORKER node
-HAPROXY_CPU = 2                                                         # CPU qty for HAPROXY
-HAPROXY_RAM = 2048                                                      # RAM size for HAPROXY
+HAPROXY_CPU = 1                                                         # CPU qty for HAPROXY
+HAPROXY_RAM = 1024                                                      # RAM size for HAPROXY
 
 K8S_VERSION = "1.28.0"                                                  # k8s bin files version
 RUNC_VERSION = "1.1.10"                                                 # runc version
@@ -24,14 +34,14 @@ ETCD_VERSION = "3.5.11"                                                 # etcd v
 CFSSL_VERSION = "1.6.4"                                                 # cfssl version
 HELM_VERSION = "3.13.3"                                                 # HELM version
 
-CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
+CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and old keys
 
 ENCRYPTION_KEY = "VP8yCfSinFYiZTMb7zujTI+qsUoTenzCV40Rm+4t7VA="         # k8s encryption key
 
-ETCD_IP_ARRAY = ["192.168.56.10", "192.168.56.11", "192.168.56.12"]     # 3 nodes etcd cluster
-CONTROLLERS_IP_ARRAY = ["192.168.56.13", "192.168.56.14"]               # 2 x controllers
-WORKERS_IP_ARRAY = ["192.168.56.15", "192.168.56.16", "192.168.56.17"]  # 3 x workers
-HAPROXY_IP = "192.168.56.100"                                           # cluster load balanser ip
+ETCD_IP_ARRAY = ["192.168.1.104", "192.168.1.105", "192.168.1.106"]     # 3 x etcd nodes
+CONTROLLERS_IP_ARRAY = ["192.168.1.108", "192.168.1.109"]               # 2 x controllers
+WORKERS_IP_ARRAY = ["192.168.1.110", "192.168.1.111", "192.168.1.112"]  # 3 x workers
+HAPROXY_IP = "192.168.1.103"                                            # cluster load balanser ip
 
 POD_CIDR = "10.50.0.0/24"                                               # pod cidr
 CLUSTER_CIDR = "10.100.0.0/16"                                          # cluster cidr
@@ -65,15 +75,22 @@ Vagrant.configure(2) do |config|
     haproxy.vm.provider PROVIDER do |v|
       if PROVIDER == "virtualbox"
         v.name = "ha proxy"
+        v.gui = PROVIDER_GUI
+        haproxy.vm.network "private_network", ip: HAPROXY_IP
+      end
+      if PROVIDER == "hyperv"
+        v.vmname = "ha proxy"
+        haproxy.vm.network "private_network", bridge: HYPERV_SWITCH
       end
       if PROVIDER == "vmware_desktop"
-        v.vmx['displayname'] = "ha proxy"
+        v.vmx["displayname"] = "ha proxy"
+        v.gui = PROVIDER_GUI
+        haproxy.vm.network "private_network", ip: HAPROXY_IP
       end
       v.memory = HAPROXY_RAM
       v.cpus = HAPROXY_CPU
     end
-    haproxy.vm.network "private_network", ip: HAPROXY_IP
-    haproxy.vm.provision "shell", run: 'once', path: "./scripts/k8s-haproxy-init.sh", privileged: true, env: {
+    haproxy.vm.provision "shell", run: "once", path: "./scripts/k8s-haproxy-init.sh", privileged: true, env: {
       "ETCD_IP_1" => ETCD_IP_ARRAY[0],
       "ETCD_IP_2" => ETCD_IP_ARRAY[1],
       "ETCD_IP_3" => ETCD_IP_ARRAY[2],
@@ -94,24 +111,33 @@ Vagrant.configure(2) do |config|
       node.vm.provider PROVIDER do |v|
         if PROVIDER == "virtualbox"
           v.name = "etcd node #{i}"
+          v.gui = PROVIDER_GUI
+        end
+        if PROVIDER == "hyperv"
+          v.vmname = "etcd node #{i}"
         end
         if PROVIDER == "vmware_desktop"
-          v.vmx['displayname'] = "etcd node #{i}"
+          v.vmx["displayname"] = "etcd node #{i}"
+          v.gui = PROVIDER_GUI
         end
         v.memory = ETCD_RAM
         v.cpus = ETCD_CPU
-        v.gui = PROVIDER_GUI
       end
       node.vm.hostname = "etcd-#{i}"
-      node.vm.network "private_network", ip: ETCD_IP_ARRAY[i - 1]
-      node.vm.synced_folder "./shared", "/shared"
+      if PROVIDER == "hyperv"
+        node.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
+        node.vm.network "private_network", bridge: HYPERV_SWITCH
+      else
+        node.vm.network "private_network", ip: ETCD_IP_ARRAY[i - 1]
+        node.vm.synced_folder "./shared", "/shared"
+      end
       if (i == 1 && CLEAR_DEPLOYMENT == true)
-        node.vm.provision "shell", run: 'once', path: "./scripts/k8s-etcd-and-cfssl-downloader.sh", privileged: false, env: {
+        node.vm.provision "shell", run: "once", path: "./scripts/k8s-etcd-and-cfssl-downloader.sh", privileged: false, env: {
           "DISTR_SHARED_FOLDER_PATH" => "/shared/distr",
           "ETCD_VERSION" => ETCD_VERSION,
           "CFSSL_VERSION" => CFSSL_VERSION
         }
-        node.vm.provision "shell", run: 'once', path: "./scripts/k8s-cert-gen.sh", privileged: true, env: {
+        node.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-gen.sh", privileged: true, env: {
           "EXPIRY" => EXPIRY,
           "ALGO" => ALGO,
           "SIZE" => SIZE,
@@ -129,7 +155,7 @@ Vagrant.configure(2) do |config|
           "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
         }
       end
-      node.vm.provision "shell", run: 'once', path: "./scripts/k8s-etcd-init.sh", privileged: true, env: {
+      node.vm.provision "shell", run: "once", path: "./scripts/k8s-etcd-init.sh", privileged: true, env: {
         "INTERNAL_IP" => ETCD_IP_ARRAY[i - 1],
         "ETCD_CURRENT_NAME" => "etcd-#{i}",
         "ETCD_NAME_1" => "etcd-1",
@@ -144,7 +170,7 @@ Vagrant.configure(2) do |config|
         "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
       }
       if (i == 3)
-        node.vm.provision "shell", run: 'once', privileged: false, inline: <<-SHELL
+        node.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
           sleep 5
           ETCDCTL_API=3 etcdctl member list \
             --endpoints=https://127.0.0.1:2379 \
@@ -165,32 +191,42 @@ Vagrant.configure(2) do |config|
       controller.vm.provider PROVIDER do |v|
         if PROVIDER == "virtualbox"
           v.name = "controller node #{i}"
+          v.gui = PROVIDER_GUI
+        end
+        if PROVIDER == "hyperv"
+          v.vmname = "controller node #{i}"
         end
         if PROVIDER == "vmware_desktop"
-          v.vmx['displayname'] = "controller node #{i}"
+          v.vmx["displayname"] = "controller node #{i}"
+          v.gui = PROVIDER_GUI
         end
         v.memory = CONTROLLER_RAM
         v.cpus = CONTROLLER_CPU
-        v.gui = PROVIDER_GUI
       end
       controller.vm.hostname = "controller-#{i}"
-      controller.vm.network "private_network", ip: CONTROLLERS_IP_ARRAY[i - 1]
-      controller.vm.synced_folder "./shared", "/shared"
-      controller.vm.synced_folder "./addons", "/addons"
+      if PROVIDER == "hyperv"
+        controller.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
+        controller.vm.synced_folder "./addons", "/addons", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
+        controller.vm.network "private_network", bridge: HYPERV_SWITCH
+      else
+        controller.vm.network "private_network", ip: CONTROLLERS_IP_ARRAY[i - 1]
+        controller.vm.synced_folder "./shared", "/shared"
+        controller.vm.synced_folder "./addons", "/addons"
+      end
       if (i == 1 && CLEAR_DEPLOYMENT == true) then
-        controller.vm.provision "shell", run: 'once', path: "./scripts/k8s-controller-bins-downloader.sh", privileged: false, env: {
+        controller.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-bins-downloader.sh", privileged: false, env: {
           "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
           "K8S_VERSION" => K8S_VERSION,
           "HELM_VERSION" => HELM_VERSION
         }
-        controller.vm.provision "shell", run: 'once', path: "./scripts/k8s-config-gen.sh", privileged: true, env: {
+        controller.vm.provision "shell", run: "once", path: "./scripts/k8s-config-gen.sh", privileged: true, env: {
           "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
           "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
           "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
           "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
         }
       end
-      controller.vm.provision "shell", run: 'once', path: "./scripts/k8s-controller-init.sh", privileged: true, env: {
+      controller.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-init.sh", privileged: true, env: {
         "WORKER_1_IP" => WORKERS_IP_ARRAY[0],
         "WORKER_2_IP" => WORKERS_IP_ARRAY[1],
         "WORKER_3_IP" => WORKERS_IP_ARRAY[2],
@@ -212,19 +248,20 @@ Vagrant.configure(2) do |config|
         "ETCD_IP_3" => ETCD_IP_ARRAY[2],
         "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
       }
-      controller.vm.provision "shell", run: 'once', privileged: false, inline: <<-SHELL
-        echo 'export KUBECONFIG=/shared/k8s_configs/admin.kubeconfig' >> $HOME/.bashrc
+      controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
+        echo "export KUBECONFIG=/shared/k8s_configs/admin.kubeconfig" >> $HOME/.bashrc
         helm repo add bitnami https://charts.bitnami.com/bitnami
       SHELL
       if (i == $controller_nodes_count) then
-        controller.vm.provision "shell", run: 'once', privileged: false, inline: <<-SHELL
+        controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
           kubectl delete -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig || \
             echo "No addons installed"
           kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
+          kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d
         SHELL
       end
       controller.trigger.after :up do
-        controller.vm.provision "shell", run: 'always', privileged: true, inline: <<-SHELL
+        controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
           systemctl stop kube-apiserver kube-controller-manager kube-scheduler || \
             echo "Services kube-apiserver kube-controller-manager kube-scheduler not started"
           swapoff -a
@@ -246,19 +283,28 @@ Vagrant.configure(2) do |config|
       worker.vm.provider PROVIDER do |v|
         if PROVIDER == "virtualbox"
           v.name = "worker node #{i}"
+          v.gui = PROVIDER_GUI
+        end
+        if PROVIDER == "hyperv"
+          v.vmname = "worker node #{i}"
         end
         if PROVIDER == "vmware_desktop"
-          v.vmx['displayname'] = "worker node #{i}"
+          v.vmx["displayname"] = "worker node #{i}"
+          v.gui = PROVIDER_GUI
         end
         v.memory = WORKER_RAM
         v.cpus = WORKER_CPU
-        v.gui = PROVIDER_GUI
       end
       worker.vm.hostname = "worker-#{i}"
-      worker.vm.network "private_network", ip: WORKERS_IP_ARRAY[i - 1]
-      worker.vm.synced_folder "./shared", "/shared"
+      if PROVIDER == "hyperv"
+        worker.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
+        worker.vm.network "private_network", bridge: HYPERV_SWITCH
+      else
+        worker.vm.network "private_network", ip: WORKERS_IP_ARRAY[i - 1]
+        worker.vm.synced_folder "./shared", "/shared"
+      end
       if (i == 1 && CLEAR_DEPLOYMENT == true) then
-        worker.vm.provision "shell", run: 'once', path: "./scripts/k8s-worker-bins-downloader.sh", privileged: false, env: {
+        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-bins-downloader.sh", privileged: false, env: {
           "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
           "K8S_VERSION" => K8S_VERSION,
           "RUNC_VERSION" => RUNC_VERSION,
@@ -266,7 +312,7 @@ Vagrant.configure(2) do |config|
           "CONTAINERD_VERSION" => CONTAINERD_VERSION
         }
       end
-      worker.vm.provision "shell", run: 'once', path: "./scripts/k8s-worker-cert-config-gen.sh", privileged: true, env: {
+      worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-cert-config-gen.sh", privileged: true, env: {
         "EXPIRY" => EXPIRY,
         "ALGO" => ALGO,
         "SIZE" => SIZE,
@@ -282,7 +328,7 @@ Vagrant.configure(2) do |config|
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
         "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
       }
-      worker.vm.provision "shell", run: 'once', path: "./scripts/k8s-worker-init.sh", privileged: true, env: {
+      worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-init.sh", privileged: true, env: {
         "WORKER_1_IP" => WORKERS_IP_ARRAY[0],
         "WORKER_2_IP" => WORKERS_IP_ARRAY[1],
         "WORKER_3_IP" => WORKERS_IP_ARRAY[2],
@@ -303,7 +349,7 @@ Vagrant.configure(2) do |config|
         "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
       }
       worker.trigger.after :up do
-        worker.vm.provision "shell", run: 'always', privileged: true, inline: <<-SHELL
+        worker.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
           systemctl stop containerd kubelet kube-proxy || \
             echo "Services containerd kubelet kube-proxy not started"
           swapoff -a

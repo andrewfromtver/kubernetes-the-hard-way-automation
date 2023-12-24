@@ -1,6 +1,6 @@
 #!/bin/bash
 
-apt-get update
+apt-get update || echo "Not an apt manager"
 apt-get -y install haproxy
 
 echo "\

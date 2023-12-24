@@ -148,7 +148,7 @@ systemctl enable kube-apiserver kube-controller-manager kube-scheduler
 systemctl start kube-apiserver kube-controller-manager kube-scheduler
 
 # Setup monitoring
-apt-get update
+apt-get update || echo "Not an apt manager"
 apt-get install -y nginx curl
 
 cat > kubernetes.default.svc.cluster.local <<EOF
