@@ -81,6 +81,7 @@ Vagrant.configure(2) do |config|
       if PROVIDER == "hyperv"
         v.vmname = "ha proxy"
         haproxy.vm.network "private_network", bridge: HYPERV_SWITCH
+        v.maxmemory = HAPROXY_RAM + 1024
       end
       if PROVIDER == "vmware_desktop"
         v.vmx["displayname"] = "ha proxy"
@@ -115,6 +116,7 @@ Vagrant.configure(2) do |config|
         end
         if PROVIDER == "hyperv"
           v.vmname = "etcd node #{i}"
+          v.maxmemory = ETCD_RAM + 1024
         end
         if PROVIDER == "vmware_desktop"
           v.vmx["displayname"] = "etcd node #{i}"
@@ -195,6 +197,7 @@ Vagrant.configure(2) do |config|
         end
         if PROVIDER == "hyperv"
           v.vmname = "controller node #{i}"
+          v.maxmemory = CONTROLLER_RAM + 1024
         end
         if PROVIDER == "vmware_desktop"
           v.vmx["displayname"] = "controller node #{i}"
@@ -287,6 +290,7 @@ Vagrant.configure(2) do |config|
         end
         if PROVIDER == "hyperv"
           v.vmname = "worker node #{i}"
+          v.maxmemory = WORKER_RAM + 1024
         end
         if PROVIDER == "vmware_desktop"
           v.vmx["displayname"] = "worker node #{i}"
