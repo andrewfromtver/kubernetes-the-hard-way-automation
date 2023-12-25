@@ -7,24 +7,25 @@ require "yaml"
 current_dir = File.dirname(File.expand_path(__FILE__))
 smb_creds = YAML.load_file("#{current_dir}/smb_creds.yaml")
 
-PROVIDER = "hyperv"                                                     # vmware_desktop, virtualbox, hyperv
+CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
+
+PROVIDER = "virtualbox"                                                 # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                                    # show vms in provider gui
 VM_BOX = "generic/debian12"                                             # vm OC
 VM_BOX_VERSION = "4.3.2"                                                # vm OC box version
 
 SMB_USER = smb_creds["username"]                                        # SMB user for hyperv provider folder sync
 SMB_PASSWORD = smb_creds["password"]                                    # SMB password for hyperv provider folder sync
+HYPERV_SWITCH = smb_creds["switch_name"]                                # Hyper-V switch name
 
-HYPERV_SWITCH = "k8s-net"                                               # Hyper-V switch name
-
-ETCD_CPU = 1                                                            # CPU qty for ETCD node
-ETCD_RAM = 1024                                                         # RAM size for ETCD node
-CONTROLLER_CPU = 1                                                      # CPU qty for CONTROLLER node
-CONTROLLER_RAM = 1024                                                   # RAM size for CONTROLLER node
-WORKER_CPU = 4                                                          # CPU qty for WORKER node
+ETCD_CPU = 4                                                            # CPU qty for ETCD node
+ETCD_RAM = 2048                                                         # RAM size for ETCD node
+CONTROLLER_CPU = 4                                                      # CPU qty for CONTROLLER node
+CONTROLLER_RAM = 2048                                                   # RAM size for CONTROLLER node
+WORKER_CPU = 8                                                          # CPU qty for WORKER node
 WORKER_RAM = 4096                                                       # RAM size for WORKER node
-HAPROXY_CPU = 1                                                         # CPU qty for HAPROXY
-HAPROXY_RAM = 1024                                                      # RAM size for HAPROXY
+HAPROXY_CPU = 4                                                         # CPU qty for HAPROXY
+HAPROXY_RAM = 2048                                                      # RAM size for HAPROXY
 
 K8S_VERSION = "1.28.0"                                                  # k8s bin files version
 RUNC_VERSION = "1.1.10"                                                 # runc version
@@ -34,14 +35,12 @@ ETCD_VERSION = "3.5.11"                                                 # etcd v
 CFSSL_VERSION = "1.6.4"                                                 # cfssl version
 HELM_VERSION = "3.13.3"                                                 # HELM version
 
-CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and old keys
+ETCD_IP_ARRAY = ["192.168.56.10", "192.168.56.11", "192.168.56.12"]     # 3 x etcd nodes
+CONTROLLERS_IP_ARRAY = ["192.168.56.13", "192.168.56.14"]               # 2 x controllers
+WORKERS_IP_ARRAY = ["192.168.56.15", "192.168.56.116", "192.168.56.17"] # 3 x workers
+HAPROXY_IP = "192.168.56.100"                                           # cluster load balanser ip
 
 ENCRYPTION_KEY = "VP8yCfSinFYiZTMb7zujTI+qsUoTenzCV40Rm+4t7VA="         # k8s encryption key
-
-ETCD_IP_ARRAY = ["192.168.1.104", "192.168.1.105", "192.168.1.106"]     # 3 x etcd nodes
-CONTROLLERS_IP_ARRAY = ["192.168.1.108", "192.168.1.109"]               # 2 x controllers
-WORKERS_IP_ARRAY = ["192.168.1.110", "192.168.1.111", "192.168.1.112"]  # 3 x workers
-HAPROXY_IP = "192.168.1.103"                                            # cluster load balanser ip
 
 POD_CIDR = "10.50.0.0/24"                                               # pod cidr
 CLUSTER_CIDR = "10.100.0.0/16"                                          # cluster cidr
@@ -64,7 +63,6 @@ CONFIGS_SHARED_FOLDER_PATH = "/shared/k8s_configs"                      # config
 
 SERVICE_RESTART_INTERVAL = 5                                            # systemd service restart timer
 
-
 Vagrant.configure(2) do |config|
 
   # haproxy
@@ -75,21 +73,23 @@ Vagrant.configure(2) do |config|
     haproxy.vm.provider PROVIDER do |v|
       if PROVIDER == "virtualbox"
         v.name = "ha proxy"
-        v.gui = PROVIDER_GUI
-        haproxy.vm.network "private_network", ip: HAPROXY_IP
+        v.gui = PROVIDER_GUI 
       end
       if PROVIDER == "hyperv"
         v.vmname = "ha proxy"
-        haproxy.vm.network "private_network", bridge: HYPERV_SWITCH
         v.maxmemory = HAPROXY_RAM + 1024
       end
       if PROVIDER == "vmware_desktop"
         v.vmx["displayname"] = "ha proxy"
         v.gui = PROVIDER_GUI
-        haproxy.vm.network "private_network", ip: HAPROXY_IP
       end
       v.memory = HAPROXY_RAM
       v.cpus = HAPROXY_CPU
+    end
+    if PROVIDER == "hyperv"
+      haproxy.vm.network "private_network", bridge: HYPERV_SWITCH
+    else
+      haproxy.vm.network "private_network", ip: HAPROXY_IP
     end
     haproxy.vm.provision "shell", run: "once", path: "./scripts/k8s-haproxy-init.sh", privileged: true, env: {
       "ETCD_IP_1" => ETCD_IP_ARRAY[0],

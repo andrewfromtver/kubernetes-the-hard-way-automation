@@ -15,6 +15,7 @@ defaults
   timeout connect 1s
   timeout server 30m
   timeout check 1s
+  default-server init-addr last,libc,none
 
 listen stats
   mode http

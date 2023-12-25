@@ -281,6 +281,7 @@ spec:
             runAsUser: 1001
             runAsGroup: 2001
       serviceAccountName: kubernetes-dashboard
+      hostNetwork: true
       nodeSelector:
         "kubernetes.io/os": linux
       # Comment the following tolerations if Dashboard must not be deployed on master
