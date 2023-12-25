@@ -261,7 +261,7 @@ Vagrant.configure(2) do |config|
             echo "No addons installed"
           kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
           sleep 5
-          kubectl patch storageclass default -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+          kubectl patch storageclass default -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' --kubeconfig /shared/k8s_configs/admin.kubeconfig
           kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d
         SHELL
       end
