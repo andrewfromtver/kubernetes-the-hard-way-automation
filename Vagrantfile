@@ -7,7 +7,7 @@ require "yaml"
 current_dir = File.dirname(File.expand_path(__FILE__))
 smb_creds = YAML.load_file("#{current_dir}/smb_creds.yaml")
 
-CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
+CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and old keys
 
 PROVIDER = "virtualbox"                                                 # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                                    # show vms in provider gui
@@ -37,7 +37,7 @@ HELM_VERSION = "3.13.3"                                                 # HELM v
 
 ETCD_IP_ARRAY = ["192.168.56.10", "192.168.56.11", "192.168.56.12"]     # 3 x etcd nodes
 CONTROLLERS_IP_ARRAY = ["192.168.56.13", "192.168.56.14"]               # 2 x controllers
-WORKERS_IP_ARRAY = ["192.168.56.15", "192.168.56.116", "192.168.56.17"] # 3 x workers
+WORKERS_IP_ARRAY = ["192.168.56.15", "192.168.56.16", "192.168.56.17"]  # 3 x workers
 HAPROXY_IP = "192.168.56.100"                                           # cluster load balanser ip
 
 ENCRYPTION_KEY = "VP8yCfSinFYiZTMb7zujTI+qsUoTenzCV40Rm+4t7VA="         # k8s encryption key
@@ -260,6 +260,8 @@ Vagrant.configure(2) do |config|
           kubectl delete -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig || \
             echo "No addons installed"
           kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
+          sleep 5
+          kubectl patch storageclass default -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
           kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d
         SHELL
       end
