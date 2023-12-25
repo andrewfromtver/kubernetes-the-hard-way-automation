@@ -18,3 +18,10 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 * `COREDNS_VERSION 1.10.1`
 * `FLANNEL_VERSION 0.23.0`
 * `METRICS_SERVER_VERSION 0.6.4`
+
+# screenshots
+![k8s-dashboard](./docs/screenshots/k8s-dashboard.png)
+
+![k8s-haproxy-load-balanser](./docs/screenshots/k8s-haproxy-load-balanser.png)
+
+![k8s-vms-virtualbox](./docs/screenshots/k8s-vms-virtualbox.png)  
