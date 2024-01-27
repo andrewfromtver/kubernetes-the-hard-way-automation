@@ -5,7 +5,7 @@
 require "yaml"
 
 current_dir = File.dirname(File.expand_path(__FILE__))
-smb_creds = YAML.load_file("#{current_dir}/smb_creds.yaml")
+secrets = YAML.load_file("#{current_dir}/secrets.yaml")
 
 CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and old keys
 
@@ -14,18 +14,18 @@ PROVIDER_GUI = false                                                    # show v
 VM_BOX = "generic/debian12"                                             # vm OC
 VM_BOX_VERSION = "4.3.2"                                                # vm OC box version
 
-SMB_USER = smb_creds["username"]                                        # SMB user for hyperv provider folder sync
-SMB_PASSWORD = smb_creds["password"]                                    # SMB password for hyperv provider folder sync
-HYPERV_SWITCH = smb_creds["switch_name"]                                # Hyper-V switch name
+SMB_USER = secrets["username"]                                             # SMB user for hyperv provider folder sync
+SMB_PASSWORD = secrets["password"]                                         # SMB password for hyperv provider folder sync
+HYPERV_SWITCH = secrets["switch_name"]                                     # Hyper-V switch name
 
-ETCD_CPU = 4                                                            # CPU qty for ETCD node
-ETCD_RAM = 2048                                                         # RAM size for ETCD node
-CONTROLLER_CPU = 4                                                      # CPU qty for CONTROLLER node
-CONTROLLER_RAM = 2048                                                   # RAM size for CONTROLLER node
-WORKER_CPU = 8                                                          # CPU qty for WORKER node
-WORKER_RAM = 4096                                                       # RAM size for WORKER node
-HAPROXY_CPU = 4                                                         # CPU qty for HAPROXY
-HAPROXY_RAM = 2048                                                      # RAM size for HAPROXY
+ETCD_CPU = 2                                                            # CPU qty for ETCD node
+ETCD_RAM = 1024                                                         # RAM size for ETCD node
+CONTROLLER_CPU = 2                                                      # CPU qty for controller
+CONTROLLER_RAM = 1024                                                   # RAM size for controller
+WORKER_CPU = 8                                                          # CPU qty for worker
+WORKER_RAM = 4096                                                       # RAM size for worker
+HAPROXY_CPU = 2                                                         # CPU qty for HAPROXY
+HAPROXY_RAM = 1024                                                      # RAM size for HAPROXY
 
 K8S_VERSION = "1.28.0"                                                  # k8s bin files version
 RUNC_VERSION = "1.1.10"                                                 # runc version
@@ -40,7 +40,7 @@ CONTROLLERS_IP_ARRAY = ["192.168.56.13", "192.168.56.14"]               # 2 x co
 WORKERS_IP_ARRAY = ["192.168.56.15", "192.168.56.16", "192.168.56.17"]  # 3 x workers
 HAPROXY_IP = "192.168.56.100"                                           # cluster load balanser ip
 
-ENCRYPTION_KEY = "VP8yCfSinFYiZTMb7zujTI+qsUoTenzCV40Rm+4t7VA="         # k8s encryption key
+ENCRYPTION_KEY = secrets["k8s_encrypt_key"]                                # k8s encryption key
 
 POD_CIDR = "10.50.0.0/24"                                               # pod cidr
 CLUSTER_CIDR = "10.100.0.0/16"                                          # cluster cidr
@@ -48,7 +48,7 @@ SERVICE_CLUSTER_IP_RANGE = "10.32.0.0/24"                               # cluste
 SERVICE_CLUSTER_DNS_IP = "10.32.0.10"                                   # cluster dns ip
 SERVICE_CLUSTER_GATEWAY = "10.32.0.1"                                   # cluster gateway ip
 
-EXPIRY = "8760h"                                                        # cert expity
+EXPIRY = "8760h"                                                        # cert expire time
 ALGO = "rsa"                                                            # cert algo
 SIZE = 2048                                                             # cert size
 C = "US"                                                                # cetr country

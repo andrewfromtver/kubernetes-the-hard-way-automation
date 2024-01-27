@@ -2,4 +2,4 @@
 shared/distr
 shared/k8s_*
 deployment.log
-smb_creds.yaml
+secrets.yaml

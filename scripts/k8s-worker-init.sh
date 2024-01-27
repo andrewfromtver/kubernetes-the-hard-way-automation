@@ -24,8 +24,10 @@ mkdir -p \
   /var/lib/kubelet \
   /var/lib/kube-proxy \
   /var/lib/kubernetes \
-  /var/run/kubernetes
-mkdir containerd
+  /var/run/kubernetes \
+  /mnt/data/ \
+  containerd
+chmod 777 /mnt/data/
 tar -xvf ${DISTR_SHARED_FOLDER_PATH}/crictl-v${K8S_VERSION}-linux-amd64.tar.gz
 tar -xvf ${DISTR_SHARED_FOLDER_PATH}/containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz -C containerd
 tar -xvf ${DISTR_SHARED_FOLDER_PATH}/cni-plugins-linux-amd64-v${CNI_VERSION}.tgz -C /opt/cni/bin/

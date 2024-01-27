@@ -3,7 +3,16 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 
 # how-to
 * install `Vagrant`
+* create file `secrets.yaml`
 * execute `vagrant up` command from project root folder
+
+# secrets.yaml
+* `# secrets for Hyper-V deployment`
+* `username: "uername"`
+* `password: "password"`
+* `switch_name: "net-name"`
+* `# secrets for all types of deployments`
+* `k8s_encrypt_key: "strong-key"`
 
 # apps versions info
 * `K8S_VERSION 1.28.0`
