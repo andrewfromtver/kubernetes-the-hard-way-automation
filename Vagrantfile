@@ -7,22 +7,22 @@ require "yaml"
 current_dir = File.dirname(File.expand_path(__FILE__))
 secrets = YAML.load_file("#{current_dir}/secrets.yaml")
 
-CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and old keys
+CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
 
-PROVIDER = "virtualbox"                                                 # vmware_desktop, virtualbox, hyperv
+PROVIDER = "hyperv"                                                     # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                                    # show vms in provider gui
 VM_BOX = "generic/debian12"                                             # vm OC
 VM_BOX_VERSION = "4.3.2"                                                # vm OC box version
 
-SMB_USER = secrets["username"]                                             # SMB user for hyperv provider folder sync
-SMB_PASSWORD = secrets["password"]                                         # SMB password for hyperv provider folder sync
-HYPERV_SWITCH = secrets["switch_name"]                                     # Hyper-V switch name
+SMB_USER = secrets["username"]                                          # SMB user for hyperv provider folder sync
+SMB_PASSWORD = secrets["password"]                                      # SMB password for hyperv provider folder sync
+HYPERV_SWITCH = secrets["switch_name"]                                  # Hyper-V switch name
 
 ETCD_CPU = 2                                                            # CPU qty for ETCD node
 ETCD_RAM = 1024                                                         # RAM size for ETCD node
 CONTROLLER_CPU = 2                                                      # CPU qty for controller
 CONTROLLER_RAM = 1024                                                   # RAM size for controller
-WORKER_CPU = 8                                                          # CPU qty for worker
+WORKER_CPU = 4                                                          # CPU qty for worker
 WORKER_RAM = 4096                                                       # RAM size for worker
 HAPROXY_CPU = 2                                                         # CPU qty for HAPROXY
 HAPROXY_RAM = 1024                                                      # RAM size for HAPROXY
@@ -35,12 +35,15 @@ ETCD_VERSION = "3.5.11"                                                 # etcd v
 CFSSL_VERSION = "1.6.4"                                                 # cfssl version
 HELM_VERSION = "3.13.3"                                                 # HELM version
 
-ETCD_IP_ARRAY = ["192.168.56.10", "192.168.56.11", "192.168.56.12"]     # 3 x etcd nodes
-CONTROLLERS_IP_ARRAY = ["192.168.56.13", "192.168.56.14"]               # 2 x controllers
-WORKERS_IP_ARRAY = ["192.168.56.15", "192.168.56.16", "192.168.56.17"]  # 3 x workers
-HAPROXY_IP = "192.168.56.100"                                           # cluster load balanser ip
+GATEWAY_IP = "192.168.10.1"                                             # Hyper-V gateway IP
+NET_MASK = "192.168.10.0/24"                                            # net mask for Hyper-V
+NET_RANGE = 24                                                          # net range for Hyper-V
+ETCD_IP_ARRAY = ["192.168.10.10", "192.168.10.11", "192.168.10.12"]     # 3 x etcd nodes
+CONTROLLERS_IP_ARRAY = ["192.168.10.13", "192.168.10.14"]               # 2 x controllers
+WORKERS_IP_ARRAY = ["192.168.10.15", "192.168.10.16", "192.168.10.17"]  # 3 x workers
+HAPROXY_IP = "192.168.10.100"                                           # cluster load balanser ip
 
-ENCRYPTION_KEY = secrets["k8s_encrypt_key"]                                # k8s encryption key
+ENCRYPTION_KEY = secrets["k8s_encrypt_key"]                             # k8s encryption key
 
 POD_CIDR = "10.50.0.0/24"                                               # pod cidr
 CLUSTER_CIDR = "10.100.0.0/16"                                          # cluster cidr
@@ -72,22 +75,43 @@ Vagrant.configure(2) do |config|
     haproxy.vm.hostname = "haproxy"
     haproxy.vm.provider PROVIDER do |v|
       if PROVIDER == "virtualbox"
-        v.name = "ha proxy"
+        v.name = "haproxy"
         v.gui = PROVIDER_GUI 
       end
       if PROVIDER == "hyperv"
-        v.vmname = "ha proxy"
+        v.vmname = "haproxy"
         v.maxmemory = HAPROXY_RAM + 1024
       end
       if PROVIDER == "vmware_desktop"
-        v.vmx["displayname"] = "ha proxy"
+        v.vmx["displayname"] = "haproxy"
         v.gui = PROVIDER_GUI
       end
       v.memory = HAPROXY_RAM
       v.cpus = HAPROXY_CPU
     end
     if PROVIDER == "hyperv"
-      haproxy.vm.network "private_network", bridge: HYPERV_SWITCH
+      haproxy.trigger.before :up do |up_trigger|
+        up_trigger.info = "Creating 'k8s-net' Hyper-V switch if it does not exist..."
+        up_trigger.run = {
+          privileged: "true", 
+          powershell_elevated_interactive: "true", 
+          path: "./scripts/powershell/create-nat-hyperv-switch.ps1",
+          args: [HYPERV_SWITCH, GATEWAY_IP, NET_MASK, NET_RANGE]
+        }
+      end
+      haproxy.trigger.before :reload do |reload_trigger|
+        reload_trigger.info = "Setting Hyper-V switch to 'k8s-net' to allow for static IP..."
+        reload_trigger.run = {
+          privileged: "true", 
+          powershell_elevated_interactive: "true", 
+          path: "./scripts/powershell/set-hyperv-switch.ps1",
+          args: ["haproxy", HYPERV_SWITCH]
+        }
+      end
+      haproxy.vm.provision "shell", run: "once", path: "./scripts/k8s-hyperv-ip-fix.sh", privileged: true, env: {
+        "GATEWAY_IP" => GATEWAY_IP,
+        "CURRENT_IP" => HAPROXY_IP
+      }
     else
       haproxy.vm.network "private_network", ip: HAPROXY_IP
     end
@@ -101,6 +125,9 @@ Vagrant.configure(2) do |config|
       "WORKER_NODE_2_IP" => WORKERS_IP_ARRAY[1],
       "WORKER_NODE_3_IP" => WORKERS_IP_ARRAY[2]
     }
+    if PROVIDER == "hyperv"
+      haproxy.vm.provision :reload
+    end
   end
 
   # etcd cluster deploy
@@ -111,15 +138,15 @@ Vagrant.configure(2) do |config|
       node.vm.box_version = VM_BOX_VERSION
       node.vm.provider PROVIDER do |v|
         if PROVIDER == "virtualbox"
-          v.name = "etcd node #{i}"
+          v.name = "etcd-#{i}"
           v.gui = PROVIDER_GUI
         end
         if PROVIDER == "hyperv"
-          v.vmname = "etcd node #{i}"
+          v.vmname = "etcd-#{i}"
           v.maxmemory = ETCD_RAM + 1024
         end
         if PROVIDER == "vmware_desktop"
-          v.vmx["displayname"] = "etcd node #{i}"
+          v.vmx["displayname"] = "etcd-#{i}"
           v.gui = PROVIDER_GUI
         end
         v.memory = ETCD_RAM
@@ -128,7 +155,19 @@ Vagrant.configure(2) do |config|
       node.vm.hostname = "etcd-#{i}"
       if PROVIDER == "hyperv"
         node.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
-        node.vm.network "private_network", bridge: HYPERV_SWITCH
+        node.trigger.before :reload do |reload_trigger|
+          reload_trigger.info = "Setting Hyper-V switch to 'k8s-net' to allow for static IP..."
+          reload_trigger.run = {
+            privileged: "true", 
+            powershell_elevated_interactive: "true", 
+            path: "./scripts/powershell/set-hyperv-switch.ps1",
+            args: ["etcd-#{i}", HYPERV_SWITCH]
+          }
+        end
+        node.vm.provision "shell", run: "once", path: "./scripts/k8s-hyperv-ip-fix.sh", privileged: true, env: {
+          "GATEWAY_IP" => GATEWAY_IP,
+          "CURRENT_IP" => ETCD_IP_ARRAY[i - 1]
+        }
       else
         node.vm.network "private_network", ip: ETCD_IP_ARRAY[i - 1]
         node.vm.synced_folder "./shared", "/shared"
@@ -156,6 +195,9 @@ Vagrant.configure(2) do |config|
           "ETCD_IP_3" => ETCD_IP_ARRAY[2],
           "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
         }
+      end
+      if PROVIDER == "hyperv"
+        node.vm.provision :reload
       end
       node.vm.provision "shell", run: "once", path: "./scripts/k8s-etcd-init.sh", privileged: true, env: {
         "INTERNAL_IP" => ETCD_IP_ARRAY[i - 1],
@@ -192,15 +234,15 @@ Vagrant.configure(2) do |config|
       controller.vm.box_version = VM_BOX_VERSION
       controller.vm.provider PROVIDER do |v|
         if PROVIDER == "virtualbox"
-          v.name = "controller node #{i}"
+          v.name = "controller-#{i}"
           v.gui = PROVIDER_GUI
         end
         if PROVIDER == "hyperv"
-          v.vmname = "controller node #{i}"
+          v.vmname = "controller-#{i}"
           v.maxmemory = CONTROLLER_RAM + 1024
         end
         if PROVIDER == "vmware_desktop"
-          v.vmx["displayname"] = "controller node #{i}"
+          v.vmx["displayname"] = "controller-#{i}"
           v.gui = PROVIDER_GUI
         end
         v.memory = CONTROLLER_RAM
@@ -210,7 +252,19 @@ Vagrant.configure(2) do |config|
       if PROVIDER == "hyperv"
         controller.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
         controller.vm.synced_folder "./addons", "/addons", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
-        controller.vm.network "private_network", bridge: HYPERV_SWITCH
+        controller.trigger.before :reload do |reload_trigger|
+          reload_trigger.info = "Setting Hyper-V switch to 'k8s-net' to allow for static IP..."
+          reload_trigger.run = {
+            privileged: "true", 
+            powershell_elevated_interactive: "true", 
+            path: "./scripts/powershell/set-hyperv-switch.ps1",
+            args: ["controller-#{i}", HYPERV_SWITCH]
+          }
+        end
+        controller.vm.provision "shell", run: "once", path: "./scripts/k8s-hyperv-ip-fix.sh", privileged: true, env: {
+          "GATEWAY_IP" => GATEWAY_IP,
+          "CURRENT_IP" => CONTROLLERS_IP_ARRAY[i - 1]
+        }
       else
         controller.vm.network "private_network", ip: CONTROLLERS_IP_ARRAY[i - 1]
         controller.vm.synced_folder "./shared", "/shared"
@@ -228,6 +282,9 @@ Vagrant.configure(2) do |config|
           "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
           "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
         }
+      end
+      if PROVIDER == "hyperv"
+        controller.vm.provision :reload
       end
       controller.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-init.sh", privileged: true, env: {
         "WORKER_1_IP" => WORKERS_IP_ARRAY[0],
@@ -253,7 +310,6 @@ Vagrant.configure(2) do |config|
       }
       controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
         echo "export KUBECONFIG=/shared/k8s_configs/admin.kubeconfig" >> $HOME/.bashrc
-        helm repo add bitnami https://charts.bitnami.com/bitnami
       SHELL
       if (i == $controller_nodes_count) then
         controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
@@ -287,15 +343,15 @@ Vagrant.configure(2) do |config|
       worker.vm.box_version = VM_BOX_VERSION
       worker.vm.provider PROVIDER do |v|
         if PROVIDER == "virtualbox"
-          v.name = "worker node #{i}"
+          v.name = "worker-#{i}"
           v.gui = PROVIDER_GUI
         end
         if PROVIDER == "hyperv"
-          v.vmname = "worker node #{i}"
+          v.vmname = "worker-#{i}"
           v.maxmemory = WORKER_RAM + 1024
         end
         if PROVIDER == "vmware_desktop"
-          v.vmx["displayname"] = "worker node #{i}"
+          v.vmx["displayname"] = "worker-#{i}"
           v.gui = PROVIDER_GUI
         end
         v.memory = WORKER_RAM
@@ -304,7 +360,19 @@ Vagrant.configure(2) do |config|
       worker.vm.hostname = "worker-#{i}"
       if PROVIDER == "hyperv"
         worker.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
-        worker.vm.network "private_network", bridge: HYPERV_SWITCH
+        worker.trigger.before :reload do |reload_trigger|
+          reload_trigger.info = "Setting Hyper-V switch to 'k8s-net' to allow for static IP..."
+          reload_trigger.run = {
+            privileged: "true", 
+            powershell_elevated_interactive: "true", 
+            path: "./scripts/powershell/set-hyperv-switch.ps1",
+            args: ["worker-#{i}", HYPERV_SWITCH]
+          }
+        end
+        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-hyperv-ip-fix.sh", privileged: true, env: {
+          "GATEWAY_IP" => GATEWAY_IP,
+          "CURRENT_IP" => WORKERS_IP_ARRAY[i - 1]
+        }
       else
         worker.vm.network "private_network", ip: WORKERS_IP_ARRAY[i - 1]
         worker.vm.synced_folder "./shared", "/shared"
@@ -354,6 +422,9 @@ Vagrant.configure(2) do |config|
         "CONTAINERD_VERSION" => CONTAINERD_VERSION,
         "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
       }
+      if PROVIDER == "hyperv"
+        worker.vm.provision :reload
+      end
       worker.trigger.after :up do
         worker.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
           systemctl stop containerd kubelet kube-proxy || \

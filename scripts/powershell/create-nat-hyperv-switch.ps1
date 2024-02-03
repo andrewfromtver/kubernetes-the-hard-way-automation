@@ -1,0 +1,27 @@
+$switchname = $args[0]
+
+If ($args[0] -in (Get-VMSwitch | Select-Object -ExpandProperty Name) -eq $FALSE) {
+    "Creating Internal-only switch named on Windows Hyper-V host..."
+    New-VMSwitch -SwitchName $args[0] -SwitchType Internal
+    New-NetIPAddress -IPAddress $args[1] -PrefixLength 24 -InterfaceAlias "vEthernet ($switchname)"
+    New-NetNAT -Name $args[0] -InternalIPInterfaceAddressPrefix $args[2]
+}
+else {
+    "Static IP configuration already exists; skipping"
+}
+
+If ($args[1] -in (Get-NetIPAddress | Select-Object -ExpandProperty IPAddress) -eq $FALSE) {
+    "Registering new IP address on Windows Hyper-V host..."
+    New-NetIPAddress -IPAddress $args[1] -PrefixLength $args[3] -InterfaceAlias "vEthernet ($switchname)"
+}
+else {
+    "Static IP configuration already registered; skipping"
+}
+
+If ($args[2] -in (Get-NetNAT | Select-Object -ExpandProperty InternalIPInterfaceAddressPrefix) -eq $FALSE) {
+    "Registering new NAT adapter for  on Windows Hyper-V host..."
+    New-NetNAT -Name $args[0] -InternalIPInterfaceAddressPrefix $args[2]
+}
+else {
+    "Static IP configuration already registered; skipping"
+}
