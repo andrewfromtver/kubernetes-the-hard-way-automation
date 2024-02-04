@@ -19,13 +19,13 @@ SMB_PASSWORD = secrets["password"]                                      # SMB pa
 HYPERV_SWITCH = secrets["switch_name"]                                  # Hyper-V switch name
 
 ETCD_CPU = 2                                                            # CPU qty for ETCD node
-ETCD_RAM = 1024                                                         # RAM size for ETCD node
-CONTROLLER_CPU = 2                                                      # CPU qty for controller
+ETCD_RAM = 512                                                          # RAM size for ETCD node
+CONTROLLER_CPU = 4                                                      # CPU qty for controller
 CONTROLLER_RAM = 1024                                                   # RAM size for controller
-WORKER_CPU = 4                                                          # CPU qty for worker
-WORKER_RAM = 4096                                                       # RAM size for worker
+WORKER_CPU = 8                                                          # CPU qty for worker
+WORKER_RAM = 6144                                                       # RAM size for worker
 HAPROXY_CPU = 2                                                         # CPU qty for HAPROXY
-HAPROXY_RAM = 1024                                                      # RAM size for HAPROXY
+HAPROXY_RAM = 512                                                       # RAM size for HAPROXY
 
 K8S_VERSION = "1.28.0"                                                  # k8s bin files version
 RUNC_VERSION = "1.1.10"                                                 # runc version
@@ -45,11 +45,11 @@ HAPROXY_IP = "192.168.10.100"                                           # cluste
 
 ENCRYPTION_KEY = secrets["k8s_encrypt_key"]                             # k8s encryption key
 
-POD_CIDR = "10.50.0.0/24"                                               # pod cidr
-CLUSTER_CIDR = "10.100.0.0/16"                                          # cluster cidr
-SERVICE_CLUSTER_IP_RANGE = "10.32.0.0/24"                               # cluster ip range
-SERVICE_CLUSTER_DNS_IP = "10.32.0.10"                                   # cluster dns ip
-SERVICE_CLUSTER_GATEWAY = "10.32.0.1"                                   # cluster gateway ip
+POD_CIDR = "10.244.0.0/16"                                              # pod cidr
+CLUSTER_CIDR = "10.240.0.0/16"                                          # cluster cidr
+SERVICE_CLUSTER_IP_RANGE = "10.241.0.0/16"                              # cluster ip range
+SERVICE_CLUSTER_DNS_IP = "10.241.0.10"                                  # cluster dns ip
+SERVICE_CLUSTER_GATEWAY = "10.241.0.1"                                  # cluster gateway ip
 
 EXPIRY = "8760h"                                                        # cert expire time
 ALGO = "rsa"                                                            # cert algo
@@ -226,115 +226,6 @@ Vagrant.configure(2) do |config|
     end
   end
 
-  # k8s controllers deploy
-  $controller_nodes_count = CONTROLLERS_IP_ARRAY.length()
-  (1..$controller_nodes_count).each do |i|
-    config.vm.define "controller-#{i}" do |controller|
-      controller.vm.box = VM_BOX
-      controller.vm.box_version = VM_BOX_VERSION
-      controller.vm.provider PROVIDER do |v|
-        if PROVIDER == "virtualbox"
-          v.name = "controller-#{i}"
-          v.gui = PROVIDER_GUI
-        end
-        if PROVIDER == "hyperv"
-          v.vmname = "controller-#{i}"
-          v.maxmemory = CONTROLLER_RAM + 1024
-        end
-        if PROVIDER == "vmware_desktop"
-          v.vmx["displayname"] = "controller-#{i}"
-          v.gui = PROVIDER_GUI
-        end
-        v.memory = CONTROLLER_RAM
-        v.cpus = CONTROLLER_CPU
-      end
-      controller.vm.hostname = "controller-#{i}"
-      if PROVIDER == "hyperv"
-        controller.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
-        controller.vm.synced_folder "./addons", "/addons", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
-        controller.trigger.before :reload do |reload_trigger|
-          reload_trigger.info = "Setting Hyper-V switch to 'k8s-net' to allow for static IP..."
-          reload_trigger.run = {
-            privileged: "true", 
-            powershell_elevated_interactive: "true", 
-            path: "./scripts/powershell/set-hyperv-switch.ps1",
-            args: ["controller-#{i}", HYPERV_SWITCH]
-          }
-        end
-        controller.vm.provision "shell", run: "once", path: "./scripts/k8s-hyperv-ip-fix.sh", privileged: true, env: {
-          "GATEWAY_IP" => GATEWAY_IP,
-          "CURRENT_IP" => CONTROLLERS_IP_ARRAY[i - 1]
-        }
-      else
-        controller.vm.network "private_network", ip: CONTROLLERS_IP_ARRAY[i - 1]
-        controller.vm.synced_folder "./shared", "/shared"
-        controller.vm.synced_folder "./addons", "/addons"
-      end
-      if (i == 1 && CLEAR_DEPLOYMENT == true) then
-        controller.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-bins-downloader.sh", privileged: false, env: {
-          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-          "K8S_VERSION" => K8S_VERSION,
-          "HELM_VERSION" => HELM_VERSION
-        }
-        controller.vm.provision "shell", run: "once", path: "./scripts/k8s-config-gen.sh", privileged: true, env: {
-          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-          "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
-          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
-          "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
-        }
-      end
-      if PROVIDER == "hyperv"
-        controller.vm.provision :reload
-      end
-      controller.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-init.sh", privileged: true, env: {
-        "WORKER_1_IP" => WORKERS_IP_ARRAY[0],
-        "WORKER_2_IP" => WORKERS_IP_ARRAY[1],
-        "WORKER_3_IP" => WORKERS_IP_ARRAY[2],
-        "WORKER_1_NAME" => "worker-1",
-        "WORKER_2_NAME" => "worker-2",
-        "WORKER_3_NAME" => "worker-3",
-        "HELM_VERSION" => HELM_VERSION,
-        "CNI_VERSION" => CNI_VERSION,
-        "ENCRYPTION_KEY" => ENCRYPTION_KEY,
-        "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-        "INTERNAL_IP" => CONTROLLERS_IP_ARRAY[i - 1],
-        "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP,
-        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
-        "SERVICE_CLUSTER_IP_RANGE" => SERVICE_CLUSTER_IP_RANGE,
-        "CLUSTER_CIDR" => CLUSTER_CIDR,
-        "ETCD_IP_1" => ETCD_IP_ARRAY[0],
-        "ETCD_IP_2" => ETCD_IP_ARRAY[1],
-        "ETCD_IP_3" => ETCD_IP_ARRAY[2],
-        "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
-      }
-      controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
-        echo "export KUBECONFIG=/shared/k8s_configs/admin.kubeconfig" >> $HOME/.bashrc
-      SHELL
-      if (i == $controller_nodes_count) then
-        controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
-          kubectl delete -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig || \
-            echo "No addons installed"
-          kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
-          sleep 5
-          kubectl patch storageclass default -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' --kubeconfig /shared/k8s_configs/admin.kubeconfig
-          kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d
-        SHELL
-      end
-      controller.trigger.after :up do
-        controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
-          systemctl stop kube-apiserver kube-controller-manager kube-scheduler || \
-            echo "Services kube-apiserver kube-controller-manager kube-scheduler not started"
-          swapoff -a
-          mkdir -p /run/systemd/resolve
-          ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf || echo "File resolv.conf already exists"
-          systemctl start kube-apiserver kube-controller-manager kube-scheduler
-          echo "Controller node init done"
-        SHELL
-      end
-    end
-  end
-
   # k8s workers deploy
   $worker_nodes_count = WORKERS_IP_ARRAY.length()
   (1..$worker_nodes_count).each do |i|
@@ -378,12 +269,23 @@ Vagrant.configure(2) do |config|
         worker.vm.synced_folder "./shared", "/shared"
       end
       if (i == 1 && CLEAR_DEPLOYMENT == true) then
+        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-bins-downloader.sh", privileged: false, env: {
+          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+          "K8S_VERSION" => K8S_VERSION,
+          "HELM_VERSION" => HELM_VERSION
+        }
         worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-bins-downloader.sh", privileged: false, env: {
           "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
           "K8S_VERSION" => K8S_VERSION,
           "RUNC_VERSION" => RUNC_VERSION,
           "CNI_VERSION" => CNI_VERSION,
           "CONTAINERD_VERSION" => CONTAINERD_VERSION
+        }
+        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-config-gen.sh", privileged: true, env: {
+          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+          "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
+          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
+          "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
         }
       end
       worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-cert-config-gen.sh", privileged: true, env: {
@@ -439,6 +341,105 @@ Vagrant.configure(2) do |config|
           mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
           systemctl start containerd kubelet kube-proxy
           echo "Worker node init done"
+        SHELL
+      end
+    end
+  end
+
+  # k8s controllers deploy
+  $controller_nodes_count = CONTROLLERS_IP_ARRAY.length()
+  (1..$controller_nodes_count).each do |i|
+    config.vm.define "controller-#{i}" do |controller|
+      controller.vm.box = VM_BOX
+      controller.vm.box_version = VM_BOX_VERSION
+      controller.vm.provider PROVIDER do |v|
+        if PROVIDER == "virtualbox"
+          v.name = "controller-#{i}"
+          v.gui = PROVIDER_GUI
+        end
+        if PROVIDER == "hyperv"
+          v.vmname = "controller-#{i}"
+          v.maxmemory = CONTROLLER_RAM + 1024
+        end
+        if PROVIDER == "vmware_desktop"
+          v.vmx["displayname"] = "controller-#{i}"
+          v.gui = PROVIDER_GUI
+        end
+        v.memory = CONTROLLER_RAM
+        v.cpus = CONTROLLER_CPU
+      end
+      controller.vm.hostname = "controller-#{i}"
+      if PROVIDER == "hyperv"
+        controller.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
+        controller.vm.synced_folder "./addons", "/addons", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
+        controller.trigger.before :reload do |reload_trigger|
+          reload_trigger.info = "Setting Hyper-V switch to 'k8s-net' to allow for static IP..."
+          reload_trigger.run = {
+            privileged: "true", 
+            powershell_elevated_interactive: "true", 
+            path: "./scripts/powershell/set-hyperv-switch.ps1",
+            args: ["controller-#{i}", HYPERV_SWITCH]
+          }
+        end
+        controller.vm.provision "shell", run: "once", path: "./scripts/k8s-hyperv-ip-fix.sh", privileged: true, env: {
+          "GATEWAY_IP" => GATEWAY_IP,
+          "CURRENT_IP" => CONTROLLERS_IP_ARRAY[i - 1]
+        }
+      else
+        controller.vm.network "private_network", ip: CONTROLLERS_IP_ARRAY[i - 1]
+        controller.vm.synced_folder "./shared", "/shared"
+        controller.vm.synced_folder "./addons", "/addons"
+      end
+      if PROVIDER == "hyperv"
+        controller.vm.provision :reload
+      end
+      controller.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-init.sh", privileged: true, env: {
+        "WORKER_1_IP" => WORKERS_IP_ARRAY[0],
+        "WORKER_2_IP" => WORKERS_IP_ARRAY[1],
+        "WORKER_3_IP" => WORKERS_IP_ARRAY[2],
+        "WORKER_1_NAME" => "worker-1",
+        "WORKER_2_NAME" => "worker-2",
+        "WORKER_3_NAME" => "worker-3",
+        "HELM_VERSION" => HELM_VERSION,
+        "CNI_VERSION" => CNI_VERSION,
+        "ENCRYPTION_KEY" => ENCRYPTION_KEY,
+        "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+        "INTERNAL_IP" => CONTROLLERS_IP_ARRAY[i - 1],
+        "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP,
+        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
+        "SERVICE_CLUSTER_IP_RANGE" => SERVICE_CLUSTER_IP_RANGE,
+        "CLUSTER_CIDR" => CLUSTER_CIDR,
+        "ETCD_IP_1" => ETCD_IP_ARRAY[0],
+        "ETCD_IP_2" => ETCD_IP_ARRAY[1],
+        "ETCD_IP_3" => ETCD_IP_ARRAY[2],
+        "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
+      }
+      controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
+        echo "export KUBECONFIG=/shared/k8s_configs/admin.kubeconfig" >> $HOME/.bashrc
+      SHELL
+      if (i == $controller_nodes_count) then
+        controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
+          kubectl delete -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig || \
+            echo "No addons installed"
+          kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
+          sleep 5
+          kubectl patch storageclass default -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' --kubeconfig /shared/k8s_configs/admin.kubeconfig
+          kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d
+        SHELL
+      end
+      controller.trigger.after :up do
+        controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
+          systemctl stop kube-apiserver kube-controller-manager kube-scheduler || \
+            echo "Services kube-apiserver kube-controller-manager kube-scheduler not started"
+          swapoff -a
+          mkdir -p /run/systemd/resolve
+          echo "nameserver 8.8.8.8" > /etc/resolv.conf
+          echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+          echo "search localdomain" >> /etc/resolv.conf
+          ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf || echo "File resolv.conf already exists"
+          systemctl start kube-apiserver kube-controller-manager kube-scheduler
+          echo "Controller node init done"
         SHELL
       end
     end

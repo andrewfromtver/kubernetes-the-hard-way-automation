@@ -3,6 +3,7 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 
 # how-to
 * install `Vagrant`
+* install vagrant reload plugin `vagrant plugin install vagrant-reload` for Hyper-V deployment
 * create file `secrets.yaml`
 * execute `vagrant up` command from project root folder
 
@@ -24,9 +25,9 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 * `HELM_VERSION 3.13.3`
 
 # addons versions info
-* `COREDNS_VERSION 1.10.1`
-* `FLANNEL_VERSION 0.23.0`
+* `COREDNS_VERSION 1.9.4`
 * `METRICS_SERVER_VERSION 0.6.4`
+* `KUBERNETES_DASHBOARD_VERSION 2.7.0`
 
 # screenshots
 ![k8s-dashboard](./docs/screenshots/k8s-dashboard.png)
