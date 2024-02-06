@@ -8,9 +8,8 @@ echo "nameserver 8.8.8.8" > /etc/resolv.conf
 echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 echo "search localdomain" >> /etc/resolv.conf
 echo "127.0.0.1 localhost" > /etc/hosts
-echo "${WORKER_1_IP} ${WORKER_1_NAME}" >> /etc/hosts
-echo "${WORKER_2_IP} ${WORKER_2_NAME}" >> /etc/hosts
-echo "${WORKER_3_IP} ${WORKER_3_NAME}" >> /etc/hosts
+echo "${WORKER_IP_1} ${WORKER_NAME_1}" >> /etc/hosts
+echo "${WORKER_IP_2} ${WORKER_NAME_2}" >> /etc/hosts
 cp ${DISTR_SHARED_FOLDER_PATH}/kube-apiserver \
   ${DISTR_SHARED_FOLDER_PATH}/kube-controller-manager \
   ${DISTR_SHARED_FOLDER_PATH}/kube-scheduler \
@@ -170,46 +169,3 @@ ln -s /etc/nginx/sites-available/kubernetes.default.svc.cluster.local \
 
 systemctl restart nginx
 systemctl enable nginx
-
-kubectl cluster-info --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
-sleep 5
-curl -H "Host: kubernetes.default.svc.cluster.local" -i http://127.0.0.1/healthz -s
-
-# Configure admin kubeconfig
-cat <<EOF | kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  annotations:
-    rbac.authorization.kubernetes.io/autoupdate: "true"
-  labels:
-    kubernetes.io/bootstrapping: rbac-defaults
-  name: system:kube-apiserver-to-kubelet
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - nodes/proxy
-      - nodes/stats
-      - nodes/log
-      - nodes/spec
-      - nodes/metrics
-    verbs:
-      - "*"
-EOF
-
-cat <<EOF | kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: system:kube-apiserver
-  namespace: ""
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: system:kube-apiserver-to-kubelet
-subjects:
-  - apiGroup: rbac.authorization.k8s.io
-    kind: User
-    name: kubernetes
-EOF

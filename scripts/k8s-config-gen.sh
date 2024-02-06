@@ -1,9 +1,6 @@
 #!/bin/sh
 
-cp ${DISTR_SHARED_FOLDER_PATH}/kube-apiserver \
-    ${DISTR_SHARED_FOLDER_PATH}/kube-controller-manager \
-    ${DISTR_SHARED_FOLDER_PATH}/kube-scheduler \
-    ${DISTR_SHARED_FOLDER_PATH}/kubectl /usr/local/bin/
+cp ${DISTR_SHARED_FOLDER_PATH}/kubectl /usr/local/bin/
 
 # The kube-proxy Kubernetes Configuration File
 kubectl config set-cluster k8s-selfhosted-cluster \

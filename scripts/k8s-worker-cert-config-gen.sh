@@ -69,4 +69,5 @@ kubectl config set-context default \
 
 kubectl config use-context default --kubeconfig=${HOST_NAME}.kubeconfig
 
-mv ${HOST_NAME}.kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}
+mkdir -p ${CONFIGS_SHARED_FOLDER_PATH}
+mv ${HOST_NAME}.kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/${HOST_NAME}.kubeconfig

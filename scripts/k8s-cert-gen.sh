@@ -174,7 +174,7 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=${SERVICE_CLUSTER_GATEWAY},${ETCD_IP_1},${ETCD_IP_2},${ETCD_IP_3},${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} \
+  -hostname=${SERVICE_CLUSTER_GATEWAY},${CONTROLLER_1_IP},${CONTROLLER_2_IP},${CONTROLLER_3_IP},${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} \
   -profile=kubernetes \
   kubernetes-csr.json | cfssljson -bare kubernetes
 

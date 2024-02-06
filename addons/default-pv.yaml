@@ -54,29 +54,6 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: default-pv-3-1
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
   name: default-pv-1-2
   labels:
     type: local
@@ -119,29 +96,6 @@ spec:
           operator: In
           values:
           - worker-2
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: default-pv-3-2
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -192,29 +146,6 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: default-pv-3-3
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
   name: default-pv-1-4
   labels:
     type: local
@@ -257,29 +188,6 @@ spec:
           operator: In
           values:
           - worker-2
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: default-pv-3-4
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -330,29 +238,6 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: default-pv-3-5
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
   name: default-pv-1-6
   labels:
     type: local
@@ -395,29 +280,6 @@ spec:
           operator: In
           values:
           - worker-2
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: default-pv-3-6
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -468,29 +330,6 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: default-pv-3-7
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
   name: default-pv-1-8
   labels:
     type: local
@@ -533,29 +372,6 @@ spec:
           operator: In
           values:
           - worker-2
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: default-pv-3-8
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -606,29 +422,6 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: default-pv-3-9
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
   name: default-pv-1-10
   labels:
     type: local
@@ -671,26 +464,3 @@ spec:
           operator: In
           values:
           - worker-2
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: default-pv-3-10
-  labels:
-    type: local
-spec:
-  storageClassName: default
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data"
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - worker-3

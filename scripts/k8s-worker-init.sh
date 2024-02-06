@@ -11,7 +11,6 @@ echo "search localdomain" >> /etc/resolv.conf
 echo "127.0.0.1 localhost" > /etc/hosts
 echo "${WORKER_1_IP} ${WORKER_1_NAME}" >> /etc/hosts
 echo "${WORKER_2_IP} ${WORKER_2_NAME}" >> /etc/hosts
-echo "${WORKER_3_IP} ${WORKER_3_NAME}" >> /etc/hosts
 ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
 
 mkdir /sys/fs/cgroup/systemd
