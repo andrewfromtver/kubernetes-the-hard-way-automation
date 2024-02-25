@@ -26,4 +26,4 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 
 ![k8s-haproxy](./docs/screenshots/haproxy.png)
 
-![k8s-vms](./docs/screenshots/hyper-v.png)  
+![k8s-vms](./docs/screenshots/hyper-v_vms.png)  

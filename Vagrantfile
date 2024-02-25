@@ -10,7 +10,7 @@ resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
 
-CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
+CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and old keys
 
 PROVIDER = "hyperv"                                                     # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                                    # show vms in provider gui
