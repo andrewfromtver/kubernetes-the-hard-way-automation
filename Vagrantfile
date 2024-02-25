@@ -6,24 +6,16 @@ require "yaml"
 
 current_dir = File.dirname(File.expand_path(__FILE__))
 secrets = YAML.load_file("#{current_dir}/secrets.yaml")
+resources = YAML.load_file("#{current_dir}/resources.yaml")
+network = YAML.load_file("#{current_dir}/network.yaml")
+cert = YAML.load_file("#{current_dir}/cert.yaml")
 
 CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
 
-PROVIDER = "virtualbox"                                                 # vmware_desktop, virtualbox, hyperv
+PROVIDER = "hyperv"                                                     # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                                    # show vms in provider gui
 VM_BOX = "generic/debian12"                                             # vm OC
 VM_BOX_VERSION = "4.3.2"                                                # vm OC box version
-
-SMB_USER = secrets["username"]                                          # SMB user for hyperv provider folder sync
-SMB_PASSWORD = secrets["password"]                                      # SMB password for hyperv provider folder sync
-HYPERV_SWITCH = secrets["switch_name"]                                  # Hyper-V switch name
-
-CONTROLLER_CPU = 4                                                      # CPU qty for controller
-CONTROLLER_RAM = 2048                                                   # RAM size for controller
-WORKER_CPU = 8                                                          # CPU qty for worker
-WORKER_RAM = 4096                                                       # RAM size for worker
-HAPROXY_CPU = 2                                                         # CPU qty for HAPROXY
-HAPROXY_RAM = 1024                                                      # RAM size for HAPROXY
 
 K8S_VERSION = "1.28.0"                                                  # k8s bin files version
 RUNC_VERSION = "1.1.10"                                                 # runc version
@@ -33,37 +25,40 @@ ETCD_VERSION = "3.5.11"                                                 # etcd v
 CFSSL_VERSION = "1.6.4"                                                 # cfssl version
 HELM_VERSION = "3.13.3"                                                 # HELM version
 
-GATEWAY_IP = "192.168.56.1"                                             # Hyper-V gateway IP
-NET_MASK = "192.168.56.0/24"                                            # net mask for Hyper-V
-NET_RANGE = 24                                                          # net range for Hyper-V
-CONTROLLERS_IP_ARRAY = [
-  "192.168.56.10", 
-  "192.168.56.11", 
-  "192.168.56.12"
-]                                                                       # 3 x controller + etcd nodes
-WORKERS_IP_ARRAY = [
-  "192.168.56.13", 
-  "192.168.56.14"
-]                                                                       # 2 x workers
-HAPROXY_IP = "192.168.56.100"                                           # cluster load balanser ip
+SMB_USER = secrets["username"]                                          # SMB user for hyperv provider folder sync
+SMB_PASSWORD = secrets["password"]                                      # SMB password for hyperv provider folder sync
+HYPERV_SWITCH = secrets["switch_name"]                                  # Hyper-V switch name
+
+CONTROLLER_CPU = resources["controller_cpu"]                            # CPU qty for controller
+CONTROLLER_RAM = resources["controller_ram"]                            # RAM size for controller
+WORKER_CPU = resources["worker_cpu"]                                    # CPU qty for worker
+WORKER_RAM = resources["worker_ram"]                                    # RAM size for worker
+HAPROXY_CPU = resources["haproxy_cpu"]                                  # CPU qty for HAPROXY
+HAPROXY_RAM = resources["haproxy_ram"]                                  # RAM size for HAPROXY
+
+GATEWAY_IP = network["gateway_ip"]                                      # Hyper-V gateway IP
+NET_MASK = network["net_mask"]                                          # net mask for Hyper-V
+NET_RANGE = network["net_range"]                                        # net range for Hyper-V
+CONTROLLERS_IP_ARRAY = network["controllers_ip"]                        # 3 x controller + etcd nodes
+WORKERS_IP_ARRAY = network["workers_ip"]                                # 2 x workers
+HAPROXY_IP = network["haproxy_ip"]                                      # cluster load balanser ip
+POD_CIDR = network["pod_cidr"]                                          # pod cidr
+CLUSTER_CIDR = network["cluster_cidr"]                                  # cluster cidr
+SERVICE_CLUSTER_IP_RANGE = network["service_cluster_ip_range"]          # cluster ip range
+SERVICE_CLUSTER_DNS = network["service_cluster_dns"]                    # cluster dns ip
+SERVICE_CLUSTER_GATEWAY = network["service_cluster_gateway"]            # cluster gateway ip
 
 ENCRYPTION_KEY = secrets["k8s_encrypt_key"]                             # k8s encryption key
 ETCD_TOKEN = secrets["etcd_token"]                                      # etcd token
 
-POD_CIDR = "10.244.0.0/16"                                              # pod cidr
-CLUSTER_CIDR = "10.240.0.0/16"                                          # cluster cidr
-SERVICE_CLUSTER_IP_RANGE = "10.241.0.0/16"                              # cluster ip range
-SERVICE_CLUSTER_DNS_IP = "10.241.0.10"                                  # cluster dns ip
-SERVICE_CLUSTER_GATEWAY = "10.241.0.1"                                  # cluster gateway ip
-
-EXPIRY = "8760h"                                                        # cert expire time
-ALGO = "rsa"                                                            # cert algo
-SIZE = 2048                                                             # cert size
-C = "US"                                                                # cetr country
-L = "Portland"                                                          # cert location
-O = "Kubernetes"                                                        # cert org.
-OU = "k8s sefhosted cluster"                                            # cert org. unit
-ST = "Oregon"                                                           # cert state
+EXPIRY = cert["expiry"]                                                 # cert expire time
+ALGO = cert["algo"]                                                     # cert algo
+SIZE = cert["sizr"]                                                     # cert size
+C = cert["c"]                                                           # cetr country
+L = cert["l"]                                                           # cert location
+O = cert["o"]                                                           # cert org.
+OU = cert["ou"]                                                         # cert org. unit
+ST = cert["st"]                                                         # cert state
 
 DISTR_SHARED_FOLDER_PATH = "/shared/distr"                              # distr folder
 KEYS_SHARED_FOLDER_PATH = "/shared/k8s_keys"                            # keys folder
@@ -241,7 +236,7 @@ Vagrant.configure(2) do |config|
         "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
         "POD_CIDR" => POD_CIDR,
         "CLUSTER_CIDR" => CLUSTER_CIDR,
-        "SERVICE_CLUSTER_DNS_IP" => SERVICE_CLUSTER_DNS_IP,
+        "SERVICE_CLUSTER_DNS" => SERVICE_CLUSTER_DNS,
         "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
         "HOSTNAME" => "worker-#{i}",
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
