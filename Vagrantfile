@@ -53,7 +53,7 @@ ETCD_TOKEN = secrets["etcd_token"]                                      # etcd t
 
 EXPIRY = cert["expiry"]                                                 # cert expire time
 ALGO = cert["algo"]                                                     # cert algo
-SIZE = cert["sizr"]                                                     # cert size
+SIZE = cert["size"]                                                     # cert size
 C = cert["c"]                                                           # cetr country
 L = cert["l"]                                                           # cert location
 O = cert["o"]                                                           # cert org.
