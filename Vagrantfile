@@ -10,7 +10,7 @@ resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
 
-CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and certs
+CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and certs
 
 PROVIDER = "virtualbox"                                                 # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                                    # show vms in provider gui
@@ -40,7 +40,7 @@ GATEWAY_IP = network["gateway_ip"]                                      # Hyper-
 NET_MASK = network["net_mask"]                                          # net mask for Hyper-V
 NET_RANGE = network["net_range"]                                        # net range for Hyper-V
 CONTROLLERS_IP_ARRAY = network["controllers_ip"]                        # 3 x controller + etcd nodes
-WORKERS_IP_ARRAY = network["workers_ip"]                                # 2 x workers
+WORKERS_IP_ARRAY = network["workers_ip"]                                # 5 x worker nodes
 HAPROXY_IP = network["haproxy_ip"]                                      # cluster load balanser ip
 POD_CIDR = network["pod_cidr"]                                          # pod cidr
 CLUSTER_CIDR = network["cluster_cidr"]                                  # cluster cidr
@@ -118,7 +118,10 @@ Vagrant.configure(2) do |config|
       "CONTROLLER_IP_2" => CONTROLLERS_IP_ARRAY[1],
       "CONTROLLER_IP_3" => CONTROLLERS_IP_ARRAY[2],
       "WORKER_IP_1" => WORKERS_IP_ARRAY[0],
-      "WORKER_IP_2" => WORKERS_IP_ARRAY[1]
+      "WORKER_IP_2" => WORKERS_IP_ARRAY[1],
+      "WORKER_IP_3" => WORKERS_IP_ARRAY[2],
+      "WORKER_IP_4" => WORKERS_IP_ARRAY[3],
+      "WORKER_IP_5" => WORKERS_IP_ARRAY[4]
     }
     if PROVIDER == "hyperv"
       haproxy.vm.provision :reload
@@ -187,8 +190,6 @@ Vagrant.configure(2) do |config|
           "CNI_VERSION" => CNI_VERSION,
           "CONTAINERD_VERSION" => CONTAINERD_VERSION
         }
-      end
-      if (i == 1) then
         worker.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-gen.sh", privileged: true, env: {
           "EXPIRY" => EXPIRY,
           "ALGO" => ALGO,
@@ -230,10 +231,16 @@ Vagrant.configure(2) do |config|
         "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
       }
       worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-init.sh", privileged: true, env: {
-        "WORKER_1_IP" => WORKERS_IP_ARRAY[0],
-        "WORKER_2_IP" => WORKERS_IP_ARRAY[1],
-        "WORKER_1_NAME" => "worker-1",
-        "WORKER_2_NAME" => "worker-2",
+        "WORKER_IP_1" => WORKERS_IP_ARRAY[0],
+        "WORKER_IP_2" => WORKERS_IP_ARRAY[1],
+        "WORKER_IP_3" => WORKERS_IP_ARRAY[2],
+        "WORKER_IP_4" => WORKERS_IP_ARRAY[3],
+        "WORKER_IP_5" => WORKERS_IP_ARRAY[4],
+        "WORKER_NAME_1" => "worker-1",
+        "WORKER_NAME_2" => "worker-2",
+        "WORKER_NAME_3" => "worker-3",
+        "WORKER_NAME_4" => "worker-4",
+        "WORKER_NAME_5" => "worker-5",
         "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
         "POD_CIDR" => POD_CIDR,
         "CLUSTER_CIDR" => CLUSTER_CIDR,
@@ -329,8 +336,14 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-init.sh", privileged: true, env: {
         "WORKER_IP_1" => WORKERS_IP_ARRAY[0],
         "WORKER_IP_2" => WORKERS_IP_ARRAY[1],
+        "WORKER_IP_3" => WORKERS_IP_ARRAY[2],
+        "WORKER_IP_4" => WORKERS_IP_ARRAY[3],
+        "WORKER_IP_5" => WORKERS_IP_ARRAY[4],
         "WORKER_NAME_1" => "worker-1",
         "WORKER_NAME_2" => "worker-2",
+        "WORKER_NAME_3" => "worker-3",
+        "WORKER_NAME_4" => "worker-4",
+        "WORKER_NAME_5" => "worker-5",
         "HELM_VERSION" => HELM_VERSION,
         "CNI_VERSION" => CNI_VERSION,
         "ENCRYPTION_KEY" => ENCRYPTION_KEY,
@@ -368,13 +381,7 @@ Vagrant.configure(2) do |config|
         SHELL
         controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
           sleep 5
-          helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/ --kubeconfig /shared/k8s_configs/admin.kubeconfig
-          helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard --kubeconfig /shared/k8s_configs/admin.kubeconfig
-          sleep 5
           kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
-          sleep 5
-          kubectl patch storageclass default -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' --kubeconfig /shared/k8s_configs/admin.kubeconfig
-          kubectl get secret kubernetes -n kubernetes-dashboard -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d
         SHELL
       end
       controller.trigger.after :up do

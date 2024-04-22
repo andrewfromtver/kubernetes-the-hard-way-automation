@@ -10,6 +10,9 @@ echo "search localdomain" >> /etc/resolv.conf
 echo "127.0.0.1 localhost" > /etc/hosts
 echo "${WORKER_IP_1} ${WORKER_NAME_1}" >> /etc/hosts
 echo "${WORKER_IP_2} ${WORKER_NAME_2}" >> /etc/hosts
+echo "${WORKER_IP_3} ${WORKER_NAME_3}" >> /etc/hosts
+echo "${WORKER_IP_4} ${WORKER_NAME_4}" >> /etc/hosts
+echo "${WORKER_IP_5} ${WORKER_NAME_5}" >> /etc/hosts
 cp ${DISTR_SHARED_FOLDER_PATH}/kube-apiserver \
   ${DISTR_SHARED_FOLDER_PATH}/kube-controller-manager \
   ${DISTR_SHARED_FOLDER_PATH}/kube-scheduler \

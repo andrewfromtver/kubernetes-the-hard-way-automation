@@ -40,6 +40,9 @@ listen k8s-worker
   bind *:30000-32767
   server worker-1 ${WORKER_IP_1} maxconn 100 check port 10250
   server worker-2 ${WORKER_IP_2} maxconn 100 check port 10250
+  server worker-3 ${WORKER_IP_3} maxconn 100 check port 10250
+  server worker-4 ${WORKER_IP_4} maxconn 100 check port 10250
+  server worker-5 ${WORKER_IP_5} maxconn 100 check port 10250
 
 " > /etc/haproxy/haproxy.cfg
 

@@ -9,8 +9,11 @@ echo "nameserver 8.8.8.8" > /etc/resolv.conf
 echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 echo "search localdomain" >> /etc/resolv.conf
 echo "127.0.0.1 localhost" > /etc/hosts
-echo "${WORKER_1_IP} ${WORKER_1_NAME}" >> /etc/hosts
-echo "${WORKER_2_IP} ${WORKER_2_NAME}" >> /etc/hosts
+echo "${WORKER_IP_1} ${WORKER_NAME_1}" >> /etc/hosts
+echo "${WORKER_IP_2} ${WORKER_NAME_2}" >> /etc/hosts
+echo "${WORKER_IP_3} ${WORKER_NAME_3}" >> /etc/hosts
+echo "${WORKER_IP_4} ${WORKER_NAME_4}" >> /etc/hosts
+echo "${WORKER_IP_5} ${WORKER_NAME_5}" >> /etc/hosts
 ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
 
 mkdir /sys/fs/cgroup/systemd
