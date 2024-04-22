@@ -2,4 +2,7 @@
 shared/distr
 shared/k8s_*
 deployment.log
-*.yaml
+secrets.yaml
+network.yaml
+cert.yaml
+resources.yaml

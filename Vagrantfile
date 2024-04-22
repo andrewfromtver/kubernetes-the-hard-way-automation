@@ -10,7 +10,7 @@ resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
 
-CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs
+CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and certs
 
 PROVIDER = "virtualbox"                                                 # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                                    # show vms in provider gui
@@ -188,29 +188,31 @@ Vagrant.configure(2) do |config|
           "CONTAINERD_VERSION" => CONTAINERD_VERSION
         }
       end
-      worker.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-gen.sh", privileged: true, env: {
-        "EXPIRY" => EXPIRY,
-        "ALGO" => ALGO,
-        "SIZE" => SIZE,
-        "C" => C,
-        "L" => L,
-        "O" => O,
-        "OU" => OU,
-        "ST" => ST,
-        "SERVICE_CLUSTER_GATEWAY" => SERVICE_CLUSTER_GATEWAY,
-        "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
-        "CONTROLLER_1_IP" => CONTROLLERS_IP_ARRAY[0],
-        "CONTROLLER_2_IP" => CONTROLLERS_IP_ARRAY[1],
-        "CONTROLLER_3_IP" => CONTROLLERS_IP_ARRAY[2],
-        "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
-      }
-      worker.vm.provision "shell", run: "once", path: "./scripts/k8s-config-gen.sh", privileged: true, env: {
-        "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
-        "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
-      }
+      if (i == 1) then
+        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-gen.sh", privileged: true, env: {
+          "EXPIRY" => EXPIRY,
+          "ALGO" => ALGO,
+          "SIZE" => SIZE,
+          "C" => C,
+          "L" => L,
+          "O" => O,
+          "OU" => OU,
+          "ST" => ST,
+          "SERVICE_CLUSTER_GATEWAY" => SERVICE_CLUSTER_GATEWAY,
+          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+          "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
+          "CONTROLLER_1_IP" => CONTROLLERS_IP_ARRAY[0],
+          "CONTROLLER_2_IP" => CONTROLLERS_IP_ARRAY[1],
+          "CONTROLLER_3_IP" => CONTROLLERS_IP_ARRAY[2],
+          "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
+        }
+        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-config-gen.sh", privileged: true, env: {
+          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+          "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
+          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
+          "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
+        }
+      end
       worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-cert-config-gen.sh", privileged: true, env: {
         "EXPIRY" => EXPIRY,
         "ALGO" => ALGO,
@@ -350,25 +352,29 @@ Vagrant.configure(2) do |config|
       if (i == $controller_nodes_count) then
         controller.vm.provision "shell", run: "once", path: "./scripts/k8s-api-server-setup.sh", privileged: true
         controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
+          sleep 5
           # test etcd cluster
           ETCDCTL_API=3 etcdctl member list \
             --endpoints=https://127.0.0.1:2379 \
             --cacert=/shared/k8s_keys/ca.pem \
             --cert=/shared/k8s_keys/kubernetes.pem \
             --key=/shared/k8s_keys/kubernetes-key.pem
+          sleep 5
           # test local healthz
           curl -H "Host: kubernetes.default.svc.cluster.local" -i http://127.0.0.1/healthz -s
+          sleep 5
           # test k8s cluster api
           kubectl cluster-info --kubeconfig /shared/k8s_configs/admin.kubeconfig
         SHELL
         controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
-          kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
           sleep 5
-          kubectl patch storageclass default -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' --kubeconfig /shared/k8s_configs/admin.kubeconfig
           helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/ --kubeconfig /shared/k8s_configs/admin.kubeconfig
           helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard --kubeconfig /shared/k8s_configs/admin.kubeconfig
           sleep 5
-          kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d
+          kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
+          sleep 5
+          kubectl patch storageclass default -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' --kubeconfig /shared/k8s_configs/admin.kubeconfig
+          kubectl get secret kubernetes -n kubernetes-dashboard -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d
         SHELL
       end
       controller.trigger.after :up do
