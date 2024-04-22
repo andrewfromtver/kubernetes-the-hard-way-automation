@@ -10,9 +10,9 @@ resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
 
-CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and old keys
+CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs
 
-PROVIDER = "hyperv"                                                     # vmware_desktop, virtualbox, hyperv
+PROVIDER = "virtualbox"                                                 # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                                    # show vms in provider gui
 VM_BOX = "generic/debian12"                                             # vm OC
 VM_BOX_VERSION = "4.3.2"                                                # vm OC box version
@@ -73,20 +73,19 @@ Vagrant.configure(2) do |config|
     haproxy.vm.box_version = VM_BOX_VERSION
     haproxy.vm.hostname = "haproxy"
     haproxy.vm.provider PROVIDER do |v|
-      if PROVIDER == "virtualbox"
-        v.name = "haproxy"
-        v.gui = PROVIDER_GUI 
-      end
-      if PROVIDER == "hyperv"
-        v.vmname = "haproxy"
-        v.maxmemory = HAPROXY_RAM + 1024
-      end
-      if PROVIDER == "vmware_desktop"
-        v.vmx["displayname"] = "haproxy"
-        v.gui = PROVIDER_GUI
-      end
       v.memory = HAPROXY_RAM
       v.cpus = HAPROXY_CPU
+      case PROVIDER
+        when "virtualbox"
+          v.name = "haproxy"
+          v.gui = PROVIDER_GUI 
+        when "hyperv"
+          v.vmname = "haproxy"
+          v.maxmemory = HAPROXY_RAM + 1024
+        when "vmware_desktop"
+          v.vmx["displayname"] = "haproxy"
+          v.gui = PROVIDER_GUI
+      end
     end
     if PROVIDER == "hyperv"
       haproxy.trigger.before :up do |up_trigger|
@@ -125,6 +124,7 @@ Vagrant.configure(2) do |config|
       haproxy.vm.provision :reload
     end
   end
+  
   # k8s workers deploy
   $worker_nodes_count = WORKERS_IP_ARRAY.length()
   (1..$worker_nodes_count).each do |i|
@@ -132,20 +132,19 @@ Vagrant.configure(2) do |config|
       worker.vm.box = VM_BOX
       worker.vm.box_version = VM_BOX_VERSION
       worker.vm.provider PROVIDER do |v|
-        if PROVIDER == "virtualbox"
-          v.name = "worker-#{i}"
-          v.gui = PROVIDER_GUI
-        end
-        if PROVIDER == "hyperv"
-          v.vmname = "worker-#{i}"
-          v.maxmemory = WORKER_RAM + 1024
-        end
-        if PROVIDER == "vmware_desktop"
-          v.vmx["displayname"] = "worker-#{i}"
-          v.gui = PROVIDER_GUI
-        end
         v.memory = WORKER_RAM
         v.cpus = WORKER_CPU
+        case PROVIDER
+          when "virtualbox"
+            v.name = "worker-#{i}"
+            v.gui = PROVIDER_GUI
+          when "hyperv"
+            v.vmname = "worker-#{i}"
+            v.maxmemory = WORKER_RAM + 1024
+          when "vmware_desktop"
+            v.vmx["displayname"] = "worker-#{i}"
+            v.gui = PROVIDER_GUI
+        end
       end
       worker.vm.hostname = "worker-#{i}"
       if PROVIDER == "hyperv"
@@ -172,7 +171,7 @@ Vagrant.configure(2) do |config|
       end
       if (i == 1 && CLEAR_DEPLOYMENT == true) then
         worker.vm.provision "shell", run: "once", path: "./scripts/k8s-etcd-and-cfssl-downloader.sh", privileged: false, env: {
-          "DISTR_SHARED_FOLDER_PATH" => "/shared/distr",
+          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
           "ETCD_VERSION" => ETCD_VERSION,
           "CFSSL_VERSION" => CFSSL_VERSION
         }
@@ -188,30 +187,30 @@ Vagrant.configure(2) do |config|
           "CNI_VERSION" => CNI_VERSION,
           "CONTAINERD_VERSION" => CONTAINERD_VERSION
         }
-        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-gen.sh", privileged: true, env: {
-          "EXPIRY" => EXPIRY,
-          "ALGO" => ALGO,
-          "SIZE" => SIZE,
-          "C" => C,
-          "L" => L,
-          "O" => O,
-          "OU" => OU,
-          "ST" => ST,
-          "SERVICE_CLUSTER_GATEWAY" => SERVICE_CLUSTER_GATEWAY,
-          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-          "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
-          "CONTROLLER_1_IP" => CONTROLLERS_IP_ARRAY[0],
-          "CONTROLLER_2_IP" => CONTROLLERS_IP_ARRAY[1],
-          "CONTROLLER_3_IP" => CONTROLLERS_IP_ARRAY[2],
-          "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
-        }
-        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-config-gen.sh", privileged: true, env: {
-          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-          "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
-          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
-          "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
-        }
       end
+      worker.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-gen.sh", privileged: true, env: {
+        "EXPIRY" => EXPIRY,
+        "ALGO" => ALGO,
+        "SIZE" => SIZE,
+        "C" => C,
+        "L" => L,
+        "O" => O,
+        "OU" => OU,
+        "ST" => ST,
+        "SERVICE_CLUSTER_GATEWAY" => SERVICE_CLUSTER_GATEWAY,
+        "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
+        "CONTROLLER_1_IP" => CONTROLLERS_IP_ARRAY[0],
+        "CONTROLLER_2_IP" => CONTROLLERS_IP_ARRAY[1],
+        "CONTROLLER_3_IP" => CONTROLLERS_IP_ARRAY[2],
+        "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
+      }
+      worker.vm.provision "shell", run: "once", path: "./scripts/k8s-config-gen.sh", privileged: true, env: {
+        "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
+        "KUBERNETES_PUBLIC_ADDRESS" => HAPROXY_IP
+      }
       worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-cert-config-gen.sh", privileged: true, env: {
         "EXPIRY" => EXPIRY,
         "ALGO" => ALGO,
@@ -267,6 +266,7 @@ Vagrant.configure(2) do |config|
       end
     end
   end
+
   # k8s controllers deploy
   $controller_nodes_count = CONTROLLERS_IP_ARRAY.length()
   (1..$controller_nodes_count).each do |i|
@@ -275,20 +275,19 @@ Vagrant.configure(2) do |config|
       controller.vm.box_version = VM_BOX_VERSION
       controller.vm.hostname = "controller-#{i}"
       controller.vm.provider PROVIDER do |v|
-        if PROVIDER == "virtualbox"
-          v.name = "controller-#{i}"
-          v.gui = PROVIDER_GUI
-        end
-        if PROVIDER == "hyperv"
-          v.vmname = "controller-#{i}"
-          v.maxmemory = CONTROLLER_RAM + 1024
-        end
-        if PROVIDER == "vmware_desktop"
-          v.vmx["displayname"] = "controller-#{i}"
-          v.gui = PROVIDER_GUI
-        end
         v.memory = CONTROLLER_RAM
         v.cpus = CONTROLLER_CPU
+        case PROVIDER
+          when "virtualbox"
+            v.name = "controller-#{i}"
+            v.gui = PROVIDER_GUI
+          when "hyperv"
+            v.vmname = "controller-#{i}"
+            v.maxmemory = CONTROLLER_RAM + 1024
+          when "vmware_desktop"
+            v.vmx["displayname"] = "controller-#{i}"
+            v.gui = PROVIDER_GUI
+        end
       end
       if PROVIDER == "hyperv"
         controller.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
@@ -363,11 +362,12 @@ Vagrant.configure(2) do |config|
           kubectl cluster-info --kubeconfig /shared/k8s_configs/admin.kubeconfig
         SHELL
         controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
-          kubectl delete -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig || \
-            echo "No addons installed"
           kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
           sleep 5
           kubectl patch storageclass default -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' --kubeconfig /shared/k8s_configs/admin.kubeconfig
+          helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/ --kubeconfig /shared/k8s_configs/admin.kubeconfig
+          helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard --kubeconfig /shared/k8s_configs/admin.kubeconfig
+          sleep 5
           kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d
         SHELL
       end
