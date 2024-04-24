@@ -42,19 +42,19 @@ cp ${DISTR_SHARED_FOLDER_PATH}/kubectl ${DISTR_SHARED_FOLDER_PATH}/kube-proxy ${
 # Configure CNI Networking
 cat <<EOF | tee /etc/cni/net.d/10-bridge.conf
 {
-    "cniVersion": "${CNI_VERSION}",
-    "name": "bridge",
-    "type": "bridge",
-    "bridge": "cni0",
-    "isGateway": true,
-    "ipMasq": true,
-    "ipam": {
-        "type": "host-local",
-        "ranges": [
-          [{"subnet": "${POD_CIDR}"}]
-        ],
-        "routes": [{"dst": "0.0.0.0/0"}]
-    }
+	"cniVersion": "${CNI_VERSION}",
+	"name": "net",
+	"type": "bridge",
+	"bridge": "cni0",
+	"isGateway": true,
+	"ipMasq": true,
+	"ipam": {
+		"type": "host-local",
+		"subnet": "${POD_CIDR}",
+		"routes": [
+			{ "dst": "0.0.0.0/0" }
+		]
+	}
 }
 EOF
 
@@ -137,6 +137,8 @@ Requires=containerd.service
 
 [Service]
 ExecStart=/usr/local/bin/kubelet \\
+  --authentication-token-webhook=true \\
+  --authorization-mode=Webhook \\
   --config=/var/lib/kubelet/kubelet-config.yaml \\
   --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \\
   --kubeconfig=/var/lib/kubelet/kubeconfig \\

@@ -133,10 +133,9 @@ spec:
       containers:
       - args:
         - --kubelet-certificate-authority=/shared/k8s_keys/ca.pem
-        - --tls-cert-file=/shared/k8s_keys/kubernetes.pem
-        - --tls-private-key-file=/shared/k8s_keys/kubernetes-key.pem
+        - --cert-dir=/tmp
         - --secure-port=8443
-        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        - --kubelet-preferred-address-types=InternalIP
         - --kubelet-use-node-status-port
         - --metric-resolution=30s
         image: registry.k8s.io/metrics-server/metrics-server:v0.6.4
@@ -176,6 +175,8 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
+        - name: tmp-dir
+          mountPath: /tmp
         - name: k8s-keys
           mountPath: "/shared/k8s_keys"
       nodeSelector:
@@ -183,6 +184,8 @@ spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: metrics-server
       volumes:
+        - name: tmp-dir
+          emptyDir: {}
         - name: k8s-keys
           hostPath:
             path: "/shared/k8s_keys"
