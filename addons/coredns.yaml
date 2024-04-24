@@ -53,6 +53,7 @@ metadata:
 data:
   Corefile: |
     .:53 {
+        forward . 8.8.8.8
         errors
         health
         ready
@@ -167,7 +168,7 @@ metadata:
 spec:
   selector:
     k8s-app: kube-dns
-  clusterIP: 10.240.0.2
+  clusterIP: 10.241.0.2
   ports:
   - name: dns
     port: 53

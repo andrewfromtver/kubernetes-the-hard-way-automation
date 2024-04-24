@@ -17,13 +17,13 @@ PROVIDER_GUI = false                                                    # show v
 VM_BOX = "generic/debian12"                                             # vm OC
 VM_BOX_VERSION = "4.3.2"                                                # vm OC box version
 
-K8S_VERSION = "1.28.0"                                                  # k8s bin files version
-RUNC_VERSION = "1.1.10"                                                 # runc version
+K8S_VERSION = "1.30.0"                                                  # k8s bin files version
+RUNC_VERSION = "1.1.12"                                                 # runc version
 CNI_VERSION = "1.0.0"                                                   # cni version
-CONTAINERD_VERSION = "1.7.11"                                           # containerd version
-ETCD_VERSION = "3.5.11"                                                 # etcd version
-CFSSL_VERSION = "1.6.4"                                                 # cfssl version
-HELM_VERSION = "3.13.3"                                                 # HELM version
+CONTAINERD_VERSION = "1.7.15"                                           # containerd version
+ETCD_VERSION = "3.5.13"                                                 # etcd version
+CFSSL_VERSION = "1.6.5"                                                 # cfssl version
+HELM_VERSION = "3.14.4"                                                 # HELM version
 
 SMB_USER = secrets["username"]                                          # SMB user for hyperv provider folder sync
 SMB_PASSWORD = secrets["password"]                                      # SMB password for hyperv provider folder sync

@@ -40,12 +40,12 @@ mv containerd/bin/* /bin/
 cp ${DISTR_SHARED_FOLDER_PATH}/kubectl ${DISTR_SHARED_FOLDER_PATH}/kube-proxy ${DISTR_SHARED_FOLDER_PATH}/kubelet /usr/local/bin/
 
 # Configure CNI Networking
-cat <<EOF | sudo tee /etc/cni/net.d/10-bridge.conf
+cat <<EOF | tee /etc/cni/net.d/10-bridge.conf
 {
     "cniVersion": "${CNI_VERSION}",
     "name": "bridge",
     "type": "bridge",
-    "bridge": "cnio0",
+    "bridge": "cni0",
     "isGateway": true,
     "ipMasq": true,
     "ipam": {
@@ -58,7 +58,7 @@ cat <<EOF | sudo tee /etc/cni/net.d/10-bridge.conf
 }
 EOF
 
-cat <<EOF | sudo tee /etc/cni/net.d/99-loopback.conf
+cat <<EOF | tee /etc/cni/net.d/99-loopback.conf
 {
     "cniVersion": "${CNI_VERSION}",
     "name": "lo",
@@ -69,7 +69,7 @@ EOF
 # Configure containerd
 mkdir -p /etc/containerd/
 
-cat << EOF | sudo tee /etc/containerd/config.toml
+cat << EOF | tee /etc/containerd/config.toml
 [plugins]
   [plugins.cri.containerd]
     snapshotter = "overlayfs"
@@ -79,7 +79,7 @@ cat << EOF | sudo tee /etc/containerd/config.toml
       runtime_root = ""
 EOF
 
-cat <<EOF | sudo tee /etc/systemd/system/containerd.service
+cat <<EOF | tee /etc/systemd/system/containerd.service
 [Unit]
 Description=containerd container runtime
 Documentation=https://containerd.io
@@ -106,7 +106,7 @@ cp ${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}-key.pem ${KEYS_SHARED_FOLDER_PATH}/${H
 cp ${CONFIGS_SHARED_FOLDER_PATH}/${HOSTNAME}.kubeconfig /var/lib/kubelet/kubeconfig
 cp ${KEYS_SHARED_FOLDER_PATH}/ca.pem /var/lib/kubernetes/
 
-cat <<EOF | sudo tee /var/lib/kubelet/kubelet-config.yaml
+cat <<EOF | tee /var/lib/kubelet/kubelet-config.yaml
 kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
 authentication:
@@ -128,7 +128,7 @@ tlsCertFile: "${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}.pem"
 tlsPrivateKeyFile: "${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}-key.pem"
 EOF
 
-cat <<EOF | sudo tee /etc/systemd/system/kubelet.service
+cat <<EOF | tee /etc/systemd/system/kubelet.service
 [Unit]
 Description=Kubernetes Kubelet
 Documentation=https://github.com/kubernetes/kubernetes
@@ -152,7 +152,7 @@ EOF
 # Configure the Kubernetes Proxy
 cp ${CONFIGS_SHARED_FOLDER_PATH}/kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
 
-cat <<EOF | sudo tee /var/lib/kube-proxy/kube-proxy-config.yaml
+cat <<EOF | tee /var/lib/kube-proxy/kube-proxy-config.yaml
 kind: KubeProxyConfiguration
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 clientConnection:
@@ -161,7 +161,7 @@ mode: "iptables"
 clusterCIDR: "${CLUSTER_CIDR}"
 EOF
 
-cat <<EOF | sudo tee /etc/systemd/system/kube-proxy.service
+cat <<EOF | tee /etc/systemd/system/kube-proxy.service
 [Unit]
 Description=Kubernetes Kube Proxy
 Documentation=https://github.com/kubernetes/kubernetes

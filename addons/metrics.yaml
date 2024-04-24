@@ -133,13 +133,13 @@ spec:
       containers:
       - args:
         - --kubelet-certificate-authority=/shared/k8s_keys/ca.pem
-        - --tls-cert-file=/shared/k8s_keys/admin.pem
-        - --tls-private-key-file=/shared/k8s_keys/admin-key.pem
-        - --secure-port=10250
-        - --kubelet-preferred-address-types=ExternalIP,InternalIP,Hostname
+        - --tls-cert-file=/shared/k8s_keys/kubernetes.pem
+        - --tls-private-key-file=/shared/k8s_keys/kubernetes-key.pem
+        - --secure-port=8443
+        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
         - --kubelet-use-node-status-port
-        - --metric-resolution=15s
-        image: registry.k8s.io/metrics-server/metrics-server:v0.7.1
+        - --metric-resolution=30s
+        image: registry.k8s.io/metrics-server/metrics-server:v0.6.4
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -150,7 +150,7 @@ spec:
           periodSeconds: 10
         name: metrics-server
         ports:
-        - containerPort: 10250
+        - containerPort: 8443
           name: https
           protocol: TCP
         readinessProbe:

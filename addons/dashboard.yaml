@@ -230,6 +230,7 @@ spec:
       labels:
         k8s-app: dashboard-metrics-scraper
     spec:
+      hostNetwork: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
