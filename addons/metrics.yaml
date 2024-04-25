@@ -119,6 +119,7 @@ metadata:
   name: metrics-server
   namespace: kube-system
 spec:
+  replicas: 2
   selector:
     matchLabels:
       k8s-app: metrics-server
@@ -130,14 +131,17 @@ spec:
       labels:
         k8s-app: metrics-server
     spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
       - args:
         - --kubelet-certificate-authority=/shared/k8s_keys/ca.pem
-        - --cert-dir=/tmp
+        - --tls-cert-file=/shared/k8s_keys/admin.pem
+        - --tls-private-key-file=/shared/k8s_keys/admin-key.pem
         - --secure-port=8443
-        - --kubelet-preferred-address-types=InternalIP
+        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
         - --kubelet-use-node-status-port
-        - --metric-resolution=30s
+        - --metric-resolution=15s
         image: registry.k8s.io/metrics-server/metrics-server:v0.6.4
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -166,17 +170,10 @@ spec:
             memory: 200Mi
         securityContext:
           allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 1000
-          seccompProfile:
-            type: RuntimeDefault
         volumeMounts:
-        - name: tmp-dir
-          mountPath: /tmp
         - name: k8s-keys
           mountPath: "/shared/k8s_keys"
       nodeSelector:
@@ -184,8 +181,6 @@ spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: metrics-server
       volumes:
-        - name: tmp-dir
-          emptyDir: {}
         - name: k8s-keys
           hostPath:
             path: "/shared/k8s_keys"
