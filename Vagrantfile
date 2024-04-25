@@ -10,7 +10,7 @@ resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
 
-CLEAR_DEPLOYMENT = false                                                # do not use cashed distrs and certs
+CLEAR_DEPLOYMENT = true                                                 # do not use cashed distrs and controller certs, first init should be done with [true]
 
 PROVIDER = "virtualbox"                                                 # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                                    # show vms in provider gui
@@ -42,7 +42,7 @@ NET_RANGE = network["net_range"]                                        # net ra
 CONTROLLERS_IP_ARRAY = network["controllers_ip"]                        # 3 x controller + etcd nodes
 WORKERS_IP_ARRAY = network["workers_ip"]                                # 5 x worker nodes
 HAPROXY_IP = network["haproxy_ip"]                                      # cluster load balanser ip
-POD_CIDR = network["pod_cidr"]                                          # pod cidr
+POD_CIDR_ARRAY = network["pod_cidrs"]                                   # pod cidr array
 CLUSTER_CIDR = network["cluster_cidr"]                                  # cluster cidr
 SERVICE_CLUSTER_IP_RANGE = network["service_cluster_ip_range"]          # cluster ip range
 SERVICE_CLUSTER_DNS = network["service_cluster_dns"]                    # cluster dns ip
@@ -242,7 +242,7 @@ Vagrant.configure(2) do |config|
         "WORKER_NAME_4" => "worker-4",
         "WORKER_NAME_5" => "worker-5",
         "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-        "POD_CIDR" => POD_CIDR,
+        "POD_CIDR" => POD_CIDR_ARRAY[i - 1],
         "CLUSTER_CIDR" => CLUSTER_CIDR,
         "SERVICE_CLUSTER_DNS" => SERVICE_CLUSTER_DNS,
         "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
