@@ -1,8 +1,6 @@
 .vagrant
 shared/distr
 shared/k8s_*
+shared/hosts
 deployment.log
 secrets.yaml
-network.yaml
-cert.yaml
-resources.yaml

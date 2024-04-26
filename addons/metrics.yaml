@@ -119,7 +119,7 @@ metadata:
   name: metrics-server
   namespace: kube-system
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       k8s-app: metrics-server
@@ -139,7 +139,7 @@ spec:
         - --tls-cert-file=/shared/k8s_keys/admin.pem
         - --tls-private-key-file=/shared/k8s_keys/admin-key.pem
         - --secure-port=8443
-        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        - --kubelet-preferred-address-types=InternalIP
         - --kubelet-use-node-status-port
         - --metric-resolution=15s
         image: registry.k8s.io/metrics-server/metrics-server:v0.6.4

@@ -3,7 +3,7 @@
 cp ${DISTR_SHARED_FOLDER_PATH}/kubectl /usr/local/bin/
 cp ${DISTR_SHARED_FOLDER_PATH}/cfssl* /usr/local/bin/
 
-# The Kubelet Client Certificates
+# Kubelet client certificates
 cat > ca-config.json <<EOF
 {
   "signing": {
@@ -43,17 +43,17 @@ cfssl gencert \
   -ca=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
   -ca-key=${KEYS_SHARED_FOLDER_PATH}/ca-key.pem \
   -config=ca-config.json \
-  -hostname=${HOST_NAME},${EXTERNAL_IP},${INTERNAL_IP} \
+  -hostname=${HOST_NAME},${GATEWAY_IP},${CONTROLLER_IP},${INTERNAL_IP} \
   -profile=kubernetes \
   ${HOST_NAME}-csr.json | cfssljson -bare ${HOST_NAME}
 
 mv ${HOST_NAME}.pem ${HOST_NAME}-key.pem ${KEYS_SHARED_FOLDER_PATH}
 
-# The kubelet Kubernetes Configuration File
+# kubelet kubernetes config
 kubectl config set-cluster k8s-selfhosted-cluster \
   --certificate-authority=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
   --embed-certs=true \
-  --server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \
+  --server=https://${CONTROLLER_IP}:6443 \
   --kubeconfig=${HOST_NAME}.kubeconfig
 
 kubectl config set-credentials system:node:${HOST_NAME} \

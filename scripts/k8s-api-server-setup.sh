@@ -1,4 +1,6 @@
-# Configure admin kubeconfig
+#!/bin/sh
+
+# configure admin kubeconfig
 cat <<EOF | kubectl apply --kubeconfig /shared/k8s_configs/admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

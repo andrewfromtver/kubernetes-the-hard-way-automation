@@ -1,25 +1,23 @@
 #!/bin/sh
 
-# Prepare node
-systemctl stop containerd kubelet kube-proxy || \
-  echo "Services containerd kubelet kube-proxy not started"
+# prepare node
+modprobe br_netfilter
 swapoff -a
+echo "vm.swappiness = 1" >> /etc/sysctl.conf
+
+systemctl stop containerd kubelet kube-proxy
+
 mkdir -p /run/systemd/resolve
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 echo "search localdomain" >> /etc/resolv.conf
-echo "127.0.0.1 localhost" > /etc/hosts
-echo "${WORKER_IP_1} ${WORKER_NAME_1}" >> /etc/hosts
-echo "${WORKER_IP_2} ${WORKER_NAME_2}" >> /etc/hosts
-echo "${WORKER_IP_3} ${WORKER_NAME_3}" >> /etc/hosts
-echo "${WORKER_IP_4} ${WORKER_NAME_4}" >> /etc/hosts
-echo "${WORKER_IP_5} ${WORKER_NAME_5}" >> /etc/hosts
 ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
 
-mkdir /sys/fs/cgroup/systemd
+mkdir -p /sys/fs/cgroup/systemd
 mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
-apt-get update || echo "Not an apt manager"
+
 apt-get -y install socat conntrack ipset
+
 mkdir -p \
   /etc/cni/net.d \
   /opt/cni/bin \
@@ -39,7 +37,7 @@ mv crictl runc /usr/local/bin/
 mv containerd/bin/* /bin/
 cp ${DISTR_SHARED_FOLDER_PATH}/kubectl ${DISTR_SHARED_FOLDER_PATH}/kube-proxy ${DISTR_SHARED_FOLDER_PATH}/kubelet /usr/local/bin/
 
-# Configure CNI Networking
+# configure CNI networking
 cat <<EOF | tee /etc/cni/net.d/10-bridge.conf
 {
 	"cniVersion": "${CNI_VERSION}",
@@ -66,7 +64,7 @@ cat <<EOF | tee /etc/cni/net.d/99-loopback.conf
 }
 EOF
 
-# Configure containerd
+# configure containerd
 mkdir -p /etc/containerd/
 
 cat << EOF | tee /etc/containerd/config.toml
@@ -101,7 +99,7 @@ LimitCORE=infinity
 WantedBy=multi-user.target
 EOF
 
-# Configure the Kubelet
+# configure Kubelet
 cp ${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}-key.pem ${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}.pem /var/lib/kubelet/
 cp ${CONFIGS_SHARED_FOLDER_PATH}/${HOSTNAME}.kubeconfig /var/lib/kubelet/kubeconfig
 cp ${KEYS_SHARED_FOLDER_PATH}/ca.pem /var/lib/kubernetes/
@@ -143,6 +141,7 @@ ExecStart=/usr/local/bin/kubelet \\
   --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \\
   --kubeconfig=/var/lib/kubelet/kubeconfig \\
   --fail-swap-on=false \\
+  --node-ip=${NODE_IP} \\
   --v=2
 Restart=on-failure
 RestartSec=${SERVICE_RESTART_INTERVAL}
@@ -151,7 +150,7 @@ RestartSec=${SERVICE_RESTART_INTERVAL}
 WantedBy=multi-user.target
 EOF
 
-# Configure the Kubernetes Proxy
+# configure kube-proxy
 cp ${CONFIGS_SHARED_FOLDER_PATH}/kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
 
 cat <<EOF | tee /var/lib/kube-proxy/kube-proxy-config.yaml
@@ -178,7 +177,7 @@ RestartSec=${SERVICE_RESTART_INTERVAL}
 WantedBy=multi-user.target
 EOF
 
-# Start the Worker Services
+# start node services
 systemctl daemon-reload
-systemctl enable containerd kubelet kube-proxy
 systemctl start containerd kubelet kube-proxy
+systemctl enable containerd kubelet kube-proxy

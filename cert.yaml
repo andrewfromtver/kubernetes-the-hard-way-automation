@@ -1,0 +1,8 @@
+expiry: "8760h"
+algo: "rsa"
+size: 4096
+c: "RU"
+l: "Tver"
+o: "Kubernetes"
+ou: "Selfhosted Cluster"
+st: "Tver Oblast"

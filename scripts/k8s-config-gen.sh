@@ -2,11 +2,11 @@
 
 cp ${DISTR_SHARED_FOLDER_PATH}/kubectl /usr/local/bin/
 
-# The kube-proxy Kubernetes Configuration File
+# kube-proxy kubernetes config
 kubectl config set-cluster k8s-selfhosted-cluster \
   --certificate-authority=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
   --embed-certs=true \
-  --server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \
+  --server=https://${CONTROLLER_IP}:6443 \
   --kubeconfig=kube-proxy.kubeconfig
 
 kubectl config set-credentials system:kube-proxy \
@@ -22,7 +22,7 @@ kubectl config set-context default \
 
 kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
 
-# The kube-controller-manager Kubernetes Configuration File
+# kube-controller-manager kubernetes config
 kubectl config set-cluster k8s-selfhosted-cluster \
   --certificate-authority=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
   --embed-certs=true \
@@ -42,7 +42,7 @@ kubectl config set-context default \
 
 kubectl config use-context default --kubeconfig=kube-controller-manager.kubeconfig
 
-# The kube-scheduler Kubernetes Configuration File
+# kube-scheduler kubernetes config
 kubectl config set-cluster k8s-selfhosted-cluster \
   --certificate-authority=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
   --embed-certs=true \
@@ -62,11 +62,11 @@ kubectl config set-context default \
 
 kubectl config use-context default --kubeconfig=kube-scheduler.kubeconfig
 
-# The admin Kubernetes Configuration File
+# admin kubernetes config
 kubectl config set-cluster k8s-selfhosted-cluster \
   --certificate-authority=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
   --embed-certs=true \
-  --server=https://127.0.0.1:6443 \
+  --server=https://${CONTROLLER_IP}:6443 \
   --kubeconfig=admin.kubeconfig
 
 kubectl config set-credentials admin \
@@ -82,6 +82,6 @@ kubectl config set-context default \
 
 kubectl config use-context default --kubeconfig=admin.kubeconfig
 
-# Distribute the Kubernetes Configuration Files
+# distribute kubernetes configs
 mkdir -p ${CONFIGS_SHARED_FOLDER_PATH}
 mv *.kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}

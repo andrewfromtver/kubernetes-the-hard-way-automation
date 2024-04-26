@@ -1,26 +1,27 @@
 #!/bin/sh
 
 # Prepare node
-systemctl stop kube-apiserver kube-controller-manager kube-scheduler nginx || \
-  echo "Services kube-apiserver kube-controller-manager kube-scheduler nginx not started"
+swapoff -a
+echo "vm.swappiness = 1" >> /etc/sysctl.conf
+
+systemctl stop kube-apiserver kube-controller-manager kube-scheduler nginx
+
 mkdir -p /run/systemd/resolve
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 echo "search localdomain" >> /etc/resolv.conf
-echo "127.0.0.1 localhost" > /etc/hosts
-echo "${WORKER_IP_1} ${WORKER_NAME_1}" >> /etc/hosts
-echo "${WORKER_IP_2} ${WORKER_NAME_2}" >> /etc/hosts
-echo "${WORKER_IP_3} ${WORKER_NAME_3}" >> /etc/hosts
-echo "${WORKER_IP_4} ${WORKER_NAME_4}" >> /etc/hosts
-echo "${WORKER_IP_5} ${WORKER_NAME_5}" >> /etc/hosts
+ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
+
 cp ${DISTR_SHARED_FOLDER_PATH}/kube-apiserver \
   ${DISTR_SHARED_FOLDER_PATH}/kube-controller-manager \
   ${DISTR_SHARED_FOLDER_PATH}/kube-scheduler \
   ${DISTR_SHARED_FOLDER_PATH}/kubectl /usr/local/bin/
-mkdir -p /etc/kubernetes/config
+
 tar -zxvf ${DISTR_SHARED_FOLDER_PATH}/helm-v${HELM_VERSION}-linux-amd64.tar.gz
 mv linux-amd64/helm /usr/local/bin/helm
 helm version --short
+
+mkdir -p /etc/kubernetes/config
 
 # Set encryption
 cat > /etc/kubernetes/config/encryption-config.yaml <<EOF
@@ -45,18 +46,18 @@ Documentation=https://github.com/kubernetes/kubernetes
 
 [Service]
 ExecStart=/usr/local/bin/kube-apiserver \\
-  --runtime-config=api/all=true \
-  --requestheader-allowed-names=aggregator \
-  --requestheader-group-headers=X-Remote-Group \
-  --requestheader-username-headers=X-Remote-User \
-  --requestheader-extra-headers-prefix=X-Remote-Extra- \
-  --requestheader-client-ca-file=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
-  --proxy-client-cert-file=${KEYS_SHARED_FOLDER_PATH}/admin.pem \
-  --proxy-client-key-file=${KEYS_SHARED_FOLDER_PATH}/admin-key.pem \
+  --runtime-config=api/all=true \\
+  --requestheader-allowed-names=aggregator \\
+  --requestheader-group-headers=X-Remote-Group \\
+  --requestheader-username-headers=X-Remote-User \\
+  --requestheader-extra-headers-prefix=X-Remote-Extra- \\
+  --requestheader-client-ca-file=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
+  --proxy-client-cert-file=${KEYS_SHARED_FOLDER_PATH}/admin.pem \\
+  --proxy-client-key-file=${KEYS_SHARED_FOLDER_PATH}/admin-key.pem \\
   --enable-aggregator-routing=true \\
-  --advertise-address=${INTERNAL_IP} \\
+  --advertise-address=${CONTROLLER_IP} \\
   --allow-privileged=true \\
-  --apiserver-count=3 \\
+  --apiserver-count=1 \\
   --audit-log-maxage=30 \\
   --audit-log-maxbackup=3 \\
   --audit-log-maxsize=100 \\
@@ -68,7 +69,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --etcd-cafile=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
   --etcd-certfile=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \\
   --etcd-keyfile=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem \\
-  --etcd-servers=https://${ETCD_IP_1}:2379,https://${ETCD_IP_2}:2379,https://${ETCD_IP_3}:2379 \\
+  --etcd-servers=https://${ETCD_IP}:2379 \\
   --event-ttl=1h \\
   --encryption-provider-config=/etc/kubernetes/config/encryption-config.yaml \\
   --kubelet-certificate-authority=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
@@ -77,7 +78,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --runtime-config='api/all=true' \\
   --service-account-key-file=${KEYS_SHARED_FOLDER_PATH}/service-account.pem \\
   --service-account-signing-key-file=${KEYS_SHARED_FOLDER_PATH}/service-account-key.pem \\
-  --service-account-issuer=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \\
+  --service-account-issuer=https://${CONTROLLER_IP}:6443 \\
   --service-cluster-ip-range=${SERVICE_CLUSTER_IP_RANGE} \\
   --service-node-port-range=30000-32767 \\
   --tls-cert-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \\
@@ -146,11 +147,10 @@ EOF
 
 # Start services
 systemctl daemon-reload
-systemctl enable kube-apiserver kube-controller-manager kube-scheduler
 systemctl start kube-apiserver kube-controller-manager kube-scheduler
+systemctl enable kube-apiserver kube-controller-manager kube-scheduler
 
 # Setup monitoring
-apt-get update || echo "Not an apt manager"
 apt-get install -y nginx curl
 
 cat > kubernetes.default.svc.cluster.local <<EOF

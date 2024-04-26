@@ -2,7 +2,7 @@
 
 cp ${DISTR_SHARED_FOLDER_PATH}/cfssl* /usr/local/bin/
 
-# Certificate Authority
+# certificate authority
 cat > ca-config.json <<EOF
 {
   "signing": {
@@ -40,7 +40,7 @@ EOF
 
 cfssl gencert -initca ca-csr.json | cfssljson -bare ca
 
-# The Admin Client Certificate
+# admin client certificate
 cat > admin-csr.json <<EOF
 {
   "CN": "admin",
@@ -67,7 +67,7 @@ cfssl gencert \
   -profile=kubernetes \
   admin-csr.json | cfssljson -bare admin
 
-# The Controller Manager Client Certificate
+# controller manager client certificate
 cat > kube-controller-manager-csr.json <<EOF
 {
   "CN": "system:kube-controller-manager",
@@ -94,7 +94,7 @@ cfssl gencert \
   -profile=kubernetes \
   kube-controller-manager-csr.json | cfssljson -bare kube-controller-manager
 
-# The Kube Proxy Client Certificate
+# kube proxy client certificate
 cat > kube-proxy-csr.json <<EOF
 {
   "CN": "system:kube-proxy",
@@ -121,7 +121,7 @@ cfssl gencert \
   -profile=kubernetes \
   kube-proxy-csr.json | cfssljson -bare kube-proxy
 
-# The Scheduler Client Certificate
+# scheduler client certificate
 cat > kube-scheduler-csr.json <<EOF
 {
   "CN": "system:kube-scheduler",
@@ -148,7 +148,7 @@ cfssl gencert \
   -profile=kubernetes \
   kube-scheduler-csr.json | cfssljson -bare kube-scheduler
 
-# The Kubernetes API Server Certificate
+# kubernetes API server certificate
 KUBERNETES_HOSTNAMES=kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local
 
 cat > kubernetes-csr.json <<EOF
@@ -174,11 +174,11 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=${SERVICE_CLUSTER_GATEWAY},${CONTROLLER_1_IP},${CONTROLLER_2_IP},${CONTROLLER_3_IP},${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} \
+  -hostname=${SERVICE_CLUSTER_GATEWAY},${CONTROLLER_IP},${GATEWAY_IP},127.0.0.1,${KUBERNETES_HOSTNAMES} \
   -profile=kubernetes \
   kubernetes-csr.json | cfssljson -bare kubernetes
 
-# The Service Account Key Pair
+# service account key pair
 cat > service-account-csr.json <<EOF
 {
   "CN": "service-accounts",
@@ -205,6 +205,6 @@ cfssl gencert \
   -profile=kubernetes \
   service-account-csr.json | cfssljson -bare service-account
 
-# Distribute the Client and Server Certificates
+# distribute client and server certificates
 mkdir -p $KEYS_SHARED_FOLDER_PATH
 mv *.pem $KEYS_SHARED_FOLDER_PATH

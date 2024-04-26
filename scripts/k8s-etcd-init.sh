@@ -1,7 +1,6 @@
 #!/bin/sh
 
-systemctl stop etcd || \
-  echo "Service etcd not started"
+systemctl stop etcd
 
 cp ${DISTR_SHARED_FOLDER_PATH}/etcd* /usr/local/bin/
 
@@ -16,7 +15,7 @@ Documentation=https://github.com/coreos
 [Service]
 Type=notify
 ExecStart=/usr/local/bin/etcd \\
-  --name ${ETCD_CURRENT_NAME} \\
+  --name ${ETCD_NAME} \\
   --cert-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \\
   --key-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem \\
   --peer-cert-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \\
@@ -25,12 +24,12 @@ ExecStart=/usr/local/bin/etcd \\
   --peer-trusted-ca-file=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
   --peer-client-cert-auth \\
   --client-cert-auth \\
-  --initial-advertise-peer-urls https://${INTERNAL_IP}:2380 \\
-  --listen-peer-urls https://${INTERNAL_IP}:2380 \\
-  --listen-client-urls https://${INTERNAL_IP}:2379,https://127.0.0.1:2379 \\
-  --advertise-client-urls https://${INTERNAL_IP}:2379 \\
+  --initial-advertise-peer-urls https://${ETCD_IP}:2380 \\
+  --listen-peer-urls https://${ETCD_IP}:2380 \\
+  --listen-client-urls https://${ETCD_IP}:2379,https://127.0.0.1:2379 \\
+  --advertise-client-urls https://${ETCD_IP}:2379 \\
   --initial-cluster-token ${ETCD_TOKEN} \\
-  --initial-cluster ${ETCD_NAME_1}=https://${ETCD_IP_1}:2380,${ETCD_NAME_2}=https://${ETCD_IP_2}:2380,${ETCD_NAME_3}=https://${ETCD_IP_3}:2380 \\
+  --initial-cluster ${ETCD_NAME}=https://${ETCD_IP}:2380 \\
   --initial-cluster-state new \\
   --data-dir=/var/lib/etcd
 Restart=on-failure
@@ -41,5 +40,5 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
+systemctl start etcd
 systemctl enable etcd
-systemctl start etcd&

@@ -80,7 +80,7 @@ metadata:
     k8s-app: kube-dns
     kubernetes.io/name: "CoreDNS"
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -171,7 +171,7 @@ metadata:
 spec:
   selector:
     k8s-app: kube-dns
-  clusterIP: "10.32.0.10"
+  clusterIP: "10.200.10.2"
   ports:
   - name: dns
     port: 53

@@ -5,8 +5,15 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 * install `Vagrant`
 * install vagrant reload plugin `vagrant plugin install vagrant-reload` for Hyper-V deployment
 * install vagrant vmware desktop plugin `vagrant plugin install vagrant-vmware-desktop` for vmWare deployment
-* add files `secrets.yaml` `resources.yaml` `network.yaml` `cert.yaml`
+* add `secrets.yaml` file to root folder of the project
 * execute `vagrant up` command from project root folder
+
+# secrets.yaml
+* `username: "smb_username"`        # for Hyper-V deployment
+* `password: "smb_password"`        # for Hyper-V deployment
+* `switch_name: "k8s-net"`          # for Hyper-V deployment
+* `k8s_encrypt_key: "strong_key"`
+* `etcd_token: "strong_token"`
 
 # apps versions info
 * `K8S_VERSION 1.30.0`

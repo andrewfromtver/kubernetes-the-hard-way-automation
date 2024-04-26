@@ -1,0 +1,16 @@
+gateway_ip: "192.168.56.1"
+net_mask: "192.168.56.0/24"
+net_range: 24
+controller_ip: "192.168.56.10"
+worker_ips: [
+  "192.168.56.11",
+  "192.168.56.12"
+]
+pod_cidrs: [
+  "10.200.11.0/24",
+  "10.200.12.0/24"
+]
+cluster_cidr: "10.200.0.0/16"
+service_cluster_ip_range: "10.200.10.0/24"
+service_cluster_gateway: "10.200.10.1"
+service_cluster_dns: "10.200.10.2"

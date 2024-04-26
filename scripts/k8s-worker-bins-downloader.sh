@@ -1,9 +1,9 @@
 #!/bin/sh
 
-# Prepare distr folder
+# prepare distr folder
 mkdir -p ${DISTR_SHARED_FOLDER_PATH}
 
-# Download k8s worker node bins
+# download k8s worker node bins
 wget -q --https-only --timestamping \
   https://github.com/kubernetes-sigs/cri-tools/releases/download/v${K8S_VERSION}/crictl-v${K8S_VERSION}-linux-amd64.tar.gz \
   https://github.com/opencontainers/runc/releases/download/v${RUNC_VERSION}/runc.amd64 \
@@ -12,7 +12,7 @@ wget -q --https-only --timestamping \
   https://storage.googleapis.com/kubernetes-release/release/v${K8S_VERSION}/bin/linux/amd64/kube-proxy \
   https://storage.googleapis.com/kubernetes-release/release/v${K8S_VERSION}/bin/linux/amd64/kubelet
 
-# Move to distr folder
+# distribute
 mv kube-proxy \
   kubelet \
   containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz \
