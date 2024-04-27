@@ -10,7 +10,7 @@ resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
 
-CLEAR_DEPLOYMENT = false                                        # do not use cashed distrs and controller certs, first init should be done with [true]
+DOWNLOAD_BINS = false                                           # download k8s and common bins while deploying cluster, first init should be done with [true]
 
 PROVIDER = "virtualbox"                                         # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                            # show vms in provider gui
@@ -47,6 +47,7 @@ SERVICE_CLUSTER_GATEWAY = network["service_cluster_gateway"]    # cluster gatewa
 
 ENCRYPTION_KEY = secrets["k8s_encrypt_key"]                     # k8s encryption key
 ETCD_TOKEN = secrets["etcd_token"]                              # etcd token
+DASHBOARD_USER_TOKEN = secrets["dashboard_token"]               # kubernetes dashboard access token
 
 EXPIRY = cert["expiry"]                                         # cert expire time
 ALGO = cert["algo"]                                             # cert algo
@@ -108,25 +109,27 @@ Vagrant.configure(2) do |config|
         worker.vm.network "private_network", ip: WORKER_IPS_ARRAY[i - 1]
         worker.vm.synced_folder "./shared", "/shared"
       end
-      if (i == 1 && CLEAR_DEPLOYMENT == true) then
-        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-etcd-and-cfssl-downloader.sh", privileged: false, env: {
-          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-          "ETCD_VERSION" => ETCD_VERSION,
-          "CFSSL_VERSION" => CFSSL_VERSION
-        }
-        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-bins-downloader.sh", privileged: false, env: {
-          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-          "K8S_VERSION" => K8S_VERSION,
-          "HELM_VERSION" => HELM_VERSION
-        }
-        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-bins-downloader.sh", privileged: false, env: {
-          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-          "K8S_VERSION" => K8S_VERSION,
-          "RUNC_VERSION" => RUNC_VERSION,
-          "CNI_VERSION" => CNI_VERSION,
-          "CONTAINERD_VERSION" => CONTAINERD_VERSION
-        }
-        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-gen.sh", privileged: true, env: {
+      if (i == 1) then
+        if (DOWNLOAD_BINS == true) then
+          worker.vm.provision "shell", run: "once", path: "./scripts/download-etcd-and-cfssl.sh", privileged: false, env: {
+            "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+            "ETCD_VERSION" => ETCD_VERSION,
+            "CFSSL_VERSION" => CFSSL_VERSION
+          }
+          worker.vm.provision "shell", run: "once", path: "./scripts/download-k8s-controller-bins.sh", privileged: false, env: {
+            "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+            "K8S_VERSION" => K8S_VERSION,
+            "HELM_VERSION" => HELM_VERSION
+          }
+          worker.vm.provision "shell", run: "once", path: "./scripts/download-k8s-worker-bins.sh", privileged: false, env: {
+            "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
+            "K8S_VERSION" => K8S_VERSION,
+            "RUNC_VERSION" => RUNC_VERSION,
+            "CNI_VERSION" => CNI_VERSION,
+            "CONTAINERD_VERSION" => CONTAINERD_VERSION
+          }
+        end
+        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-config-gen.sh", privileged: true, env: {
           "EXPIRY" => EXPIRY,
           "ALGO" => ALGO,
           "SIZE" => SIZE,
@@ -136,19 +139,13 @@ Vagrant.configure(2) do |config|
           "OU" => OU,
           "ST" => ST,
           "SERVICE_CLUSTER_GATEWAY" => SERVICE_CLUSTER_GATEWAY,
-          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-          "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
           "GATEWAY_IP" => GATEWAY_IP,
-          "CONTROLLER_IP" => CONTROLLER_IP
-        }
-        worker.vm.provision "shell", run: "once", path: "./scripts/k8s-config-gen.sh", privileged: true, env: {
+          "DASHBOARD_USER_TOKEN" => DASHBOARD_USER_TOKEN,
           "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
           "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
           "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
           "CONTROLLER_IP" => CONTROLLER_IP
         }
-      end
-      if (i == 1) then
         worker.vm.provision "shell", run: "once", privileged: false, env: {
           "IP" => WORKER_IPS_ARRAY[i - 1],
           "HOSTNAME" => "worker-#{i}",
@@ -166,7 +163,7 @@ Vagrant.configure(2) do |config|
           echo "$IP $HOSTNAME" >> /shared/hosts
         SHELL
       end
-      worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-cert-config-gen.sh", privileged: true, env: {
+      worker.vm.provision "shell", run: "once", path: "./scripts/init-k8s-worker.sh", privileged: true, env: {
         "EXPIRY" => EXPIRY,
         "ALGO" => ALGO,
         "SIZE" => SIZE,
@@ -174,15 +171,9 @@ Vagrant.configure(2) do |config|
         "L" => L,
         "OU" => OU,
         "ST" => ST,
-        "HOST_NAME" => "worker-#{i}",
         "GATEWAY_IP" => GATEWAY_IP,
         "CONTROLLER_IP" => CONTROLLER_IP,
         "INTERNAL_IP" => WORKER_IPS_ARRAY[i - 1],
-        "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
-      }
-      worker.vm.provision "shell", run: "once", path: "./scripts/k8s-worker-init.sh", privileged: true, env: {
         "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
         "NODE_IP" => WORKER_IPS_ARRAY[i - 1],
         "POD_CIDR" => POD_CIDR_ARRAY[i - 1],
@@ -244,15 +235,10 @@ Vagrant.configure(2) do |config|
       controller.vm.synced_folder "./shared", "/shared"
       controller.vm.synced_folder "./addons", "/addons"
     end
-    controller.vm.provision "shell", run: "once", path: "./scripts/k8s-etcd-init.sh", privileged: true, env: {
-        "ETCD_IP" => CONTROLLER_IP,
-        "ETCD_NAME" => "controller",
-        "ETCD_TOKEN" => ETCD_TOKEN,
-        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
-        "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
-        "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
-    }
-    controller.vm.provision "shell", run: "once", path: "./scripts/k8s-controller-init.sh", privileged: true, env: {
+    controller.vm.provision "shell", run: "once", path: "./scripts/init-k8s-controller.sh", privileged: true, env: {
+      "ETCD_IP" => CONTROLLER_IP,
+      "ETCD_NAME" => "controller",
+      "ETCD_TOKEN" => ETCD_TOKEN,
       "HELM_VERSION" => HELM_VERSION,
       "CNI_VERSION" => CNI_VERSION,
       "ENCRYPTION_KEY" => ENCRYPTION_KEY,
@@ -263,7 +249,6 @@ Vagrant.configure(2) do |config|
       "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
       "SERVICE_CLUSTER_IP_RANGE" => SERVICE_CLUSTER_IP_RANGE,
       "CLUSTER_CIDR" => CLUSTER_CIDR,
-      "ETCD_IP" => CONTROLLER_IP,
       "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
     }
     if PROVIDER == "hyperv"
@@ -273,22 +258,26 @@ Vagrant.configure(2) do |config|
     controller.vm.provision "shell", run: "once", privileged: true, inline: <<-SHELL
       cp /shared/hosts /etc/hosts
     SHELL
-    controller.vm.provision "shell", run: "once", privileged: false, inline: <<-SHELL
+    controller.vm.provision "shell", run: "once", privileged: false, env: {
+        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
+        "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
+      }, inline: <<-SHELL
       # test etcd cluster
-      sleep 5
+      sleep $SERVICE_RESTART_INTERVAL
       ETCDCTL_API=3 etcdctl member list \
         --endpoints=https://127.0.0.1:2379 \
-        --cacert=/shared/k8s_keys/ca.pem \
-        --cert=/shared/k8s_keys/kubernetes.pem \
-        --key=/shared/k8s_keys/kubernetes-key.pem
+        --cacert=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
+        --cert=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \
+        --key=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem
       # test local healthz
-      curl -H "Host: kubernetes.default.svc.cluster.local" -i http://127.0.0.1/healthz -s
+      curl https://127.0.0.1:6443/healthz --cacert ${KEYS_SHARED_FOLDER_PATH}/ca.pem -s
       # apply addons
-      kubectl apply -f /addons --kubeconfig /shared/k8s_configs/admin.kubeconfig
-      sleep 5
+      kubectl apply -f /addons --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+      sleep $SERVICE_RESTART_INTERVAL
       kubectl patch storageclass default \
         -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' \
-        --kubeconfig /shared/k8s_configs/admin.kubeconfig
+        --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
     SHELL
   end
 end

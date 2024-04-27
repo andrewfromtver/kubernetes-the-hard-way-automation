@@ -1,5 +1,80 @@
 #!/bin/sh
 
+# copy common utils
+cp ${DISTR_SHARED_FOLDER_PATH}/kubectl /usr/local/bin/
+cp ${DISTR_SHARED_FOLDER_PATH}/cfssl* /usr/local/bin/
+
+# kubelet client certificates
+cat > ca-config.json <<EOF
+{
+  "signing": {
+    "default": {
+      "expiry": "${EXPIRY}"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": ["signing", "key encipherment", "server auth", "client auth"],
+        "expiry": "${EXPIRY}"
+      }
+    }
+  }
+}
+EOF
+
+cat > ${HOSTNAME}-csr.json <<EOF
+{
+  "CN": "system:node:${HOSTNAME}",
+  "key": {
+    "algo": "${ALGO}",
+    "size": ${SIZE}
+  },
+  "names": [
+    {
+      "C": "${C}",
+      "L": "${L}",
+      "O": "system:nodes",
+      "OU": "${OU}",
+      "ST": "${ST}"
+    }
+  ]
+}
+EOF
+
+cfssl gencert \
+  -ca=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
+  -ca-key=${KEYS_SHARED_FOLDER_PATH}/ca-key.pem \
+  -config=ca-config.json \
+  -hostname=${HOSTNAME},${GATEWAY_IP},${CONTROLLER_IP},${INTERNAL_IP} \
+  -profile=kubernetes \
+  ${HOSTNAME}-csr.json | cfssljson -bare ${HOSTNAME}
+
+# distribute kubernetes certificates
+mv ${HOSTNAME}.pem ${HOSTNAME}-key.pem ${KEYS_SHARED_FOLDER_PATH}
+
+# kubelet kubernetes config
+kubectl config set-cluster k8s-selfhosted-cluster \
+  --certificate-authority=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
+  --embed-certs=true \
+  --server=https://${CONTROLLER_IP}:6443 \
+  --kubeconfig=${HOSTNAME}.kubeconfig
+
+kubectl config set-credentials system:node:${HOSTNAME} \
+  --client-certificate=${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}.pem \
+  --client-key=${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}-key.pem \
+  --embed-certs=true \
+  --kubeconfig=${HOSTNAME}.kubeconfig
+
+kubectl config set-context default \
+  --cluster=k8s-selfhosted-cluster \
+  --user=system:node:${HOSTNAME} \
+  --kubeconfig=${HOSTNAME}.kubeconfig
+
+kubectl config use-context default --kubeconfig=${HOSTNAME}.kubeconfig
+
+# distribute kubernetes configs
+mkdir -p ${CONFIGS_SHARED_FOLDER_PATH}
+mv ${HOSTNAME}.kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/${HOSTNAME}.kubeconfig
+
 # prepare node
 modprobe br_netfilter
 swapoff -a
