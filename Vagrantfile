@@ -10,7 +10,7 @@ resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
 
-CLEAR_DEPLOYMENT = false                                        # do not use cashed distrs and controller certs, first init should be done with [true]
+CLEAR_DEPLOYMENT = true                                         # do not use cashed distrs and controller certs, first init should be done with [true]
 
 PROVIDER = "virtualbox"                                         # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                            # show vms in provider gui
