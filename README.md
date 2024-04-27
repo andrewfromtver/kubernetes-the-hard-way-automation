@@ -11,7 +11,6 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 # secrets.yaml
 * `username: "smb_username"`        # for Hyper-V deployment
 * `password: "smb_password"`        # for Hyper-V deployment
-* `switch_name: "k8s-net"`          # for Hyper-V deployment
 * `k8s_encrypt_key: "strong_key"`
 * `etcd_token: "strong_token"`
 * `dashboard_token: "strong_token"`
