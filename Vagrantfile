@@ -10,7 +10,7 @@ resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
 
-DOWNLOAD_BINS = false                                           # download k8s and common bins while deploying cluster, first init should be done with [true]
+DOWNLOAD_BINS = true                                            # download k8s and common bins while deploying cluster, first init should be done with [true]
 
 PROVIDER = "virtualbox"                                         # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                            # show vms in provider gui
