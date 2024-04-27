@@ -25,8 +25,6 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 * `HELM_VERSION 3.14.4`
 
 # screenshots
-![k8s-dashboard](./docs/screenshots/dashboard.png)
+![k8s-dashboard](./docs/screenshots/01_dashboard.png)
 
-![k8s-haproxy](./docs/screenshots/haproxy.png)
-
-![k8s-vms](./docs/screenshots/hyper-v_vms.png)  
+![k8s-virtua-lbox](./docs/screenshots/02_virtua-lbox.png)  
