@@ -14,6 +14,7 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 * `switch_name: "k8s-net"`          # for Hyper-V deployment
 * `k8s_encrypt_key: "strong_key"`
 * `etcd_token: "strong_token"`
+* `dashboard_token: "strong_token"`
 
 # apps versions info
 * `K8S_VERSION 1.30.0`
