@@ -12,7 +12,7 @@ cert = YAML.load_file("#{current_dir}/cert.yaml")
 
 DOWNLOAD_BINS = false                                           # download k8s and common bins while deploying cluster, first init should be done with [true]
 
-PROVIDER = "hyperv"                                             # vmware_desktop, virtualbox, hyperv
+PROVIDER = "virtualbox"                                         # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                            # show vms in provider gui
 VM_BOX = "generic/debian12"                                     # vm OC
 VM_BOX_VERSION = "4.3.2"                                        # vm OC box version

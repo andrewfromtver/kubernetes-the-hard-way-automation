@@ -1,9 +1,9 @@
-gateway_ip: "192.168.57.1"
-net_mask: "192.168.57.0/24"
+gateway_ip: "192.168.56.1"
+net_mask: "192.168.56.0/24"
 net_range: 24
-controller_ip: "192.168.57.10"
+controller_ip: "192.168.56.10"
 worker_ips: [
-  "192.168.57.11"
+  "192.168.56.11"
 ]
 pod_cidrs: [
   "10.200.11.0/24"
