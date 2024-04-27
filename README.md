@@ -29,4 +29,4 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 
 ![k8s-virtua-lbox](./docs/screenshots/02_virtua-lbox.png)  
 
-![k8s-hyper-v](./docs/screenshots/02_hyper-v.png)
+![k8s-hyper-v](./docs/screenshots/03_hyper-v.png)
