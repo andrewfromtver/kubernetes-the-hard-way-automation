@@ -12,7 +12,7 @@ cert = YAML.load_file("#{current_dir}/cert.yaml")
 
 DOWNLOAD_BINS = false                                           # download k8s and common bins while deploying cluster, first init should be done with [true]
 
-PROVIDER = "virtualbox"                                         # vmware_desktop, virtualbox, hyperv
+PROVIDER = "hyperv"                                             # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                            # show vms in provider gui
 VM_BOX = "generic/debian12"                                     # vm OC
 VM_BOX_VERSION = "4.3.2"                                        # vm OC box version
@@ -27,7 +27,7 @@ HELM_VERSION = "3.14.4"                                         # HELM version
 
 SMB_USER = secrets["username"]                                  # SMB user for hyperv provider folder sync
 SMB_PASSWORD = secrets["password"]                              # SMB password for hyperv provider folder sync
-HYPERV_SWITCH = secrets["switch_name"]                          # Hyper-V switch name
+HYPERV_SWITCH = "k8s-net"                                       # Hyper-V switch name
 
 CONTROLLER_CPU = resources["controller_cpu"]                    # CPU qty for controller
 CONTROLLER_RAM = resources["controller_ram"]                    # RAM size for controller
@@ -92,6 +92,17 @@ Vagrant.configure(2) do |config|
           "username=#{SMB_USER}", 
           "password=#{SMB_PASSWORD}"
         ], smb_password: SMB_PASSWORD, smb_username: SMB_USER
+        if (i == 1) then
+          worker.trigger.before :up do |up_trigger|
+            up_trigger.info = "Creating 'k8s-net' Hyper-V switch if it does not exist..."
+            up_trigger.run = {
+              privileged: "true", 
+              powershell_elevated_interactive: "true", 
+              path: "./scripts/powershell/create-nat-hyperv-switch.ps1",
+              args: [HYPERV_SWITCH, GATEWAY_IP, NET_MASK, NET_RANGE]
+            }
+          end
+        end
         worker.trigger.before :reload do |reload_trigger|
           reload_trigger.info = "Setting Hyper-V switch to 'k8s-net' to allow for static IP..."
           reload_trigger.run = {
@@ -103,6 +114,7 @@ Vagrant.configure(2) do |config|
         end
         worker.vm.provision "shell", run: "once", path: "./scripts/k8s-hyperv-ip-fix.sh", privileged: true, env: {
           "GATEWAY_IP" => GATEWAY_IP,
+          "NET_RANGE" => NET_RANGE,
           "CURRENT_IP" => WORKER_IPS_ARRAY[i - 1]
         }
       else
@@ -147,19 +159,19 @@ Vagrant.configure(2) do |config|
           "CONTROLLER_IP" => CONTROLLER_IP
         }
         worker.vm.provision "shell", run: "once", privileged: false, env: {
-          "IP" => WORKER_IPS_ARRAY[i - 1],
-          "HOSTNAME" => "worker-#{i}",
-          "CONTROLLER_IP" => CONTROLLER_IP
-        }, inline: <<-SHELL
+            "IP" => WORKER_IPS_ARRAY[i - 1],
+            "HOSTNAME" => "worker-#{i}",
+            "CONTROLLER_IP" => CONTROLLER_IP
+          }, inline: <<-SHELL
           echo "127.0.0.1 localhost" > /shared/hosts
           echo "$CONTROLLER_IP controller" >> /shared/hosts
           echo "$IP $HOSTNAME" >> /shared/hosts
         SHELL
       else
         worker.vm.provision "shell", run: "once", privileged: false, env: {
-          "IP" => WORKER_IPS_ARRAY[i - 1],
-          "HOSTNAME" => "worker-#{i}"
-        }, inline: <<-SHELL
+            "IP" => WORKER_IPS_ARRAY[i - 1],
+            "HOSTNAME" => "worker-#{i}"
+          }, inline: <<-SHELL
           echo "$IP $HOSTNAME" >> /shared/hosts
         SHELL
       end
@@ -189,6 +201,20 @@ Vagrant.configure(2) do |config|
         "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
       }
       if PROVIDER == "hyperv"
+        worker.trigger.after :reload do
+          worker.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
+            modprobe br_netfilter
+            swapoff -a
+            mkdir -p /run/systemd/resolve
+            echo "nameserver 8.8.8.8" > /etc/resolv.conf
+            echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+            echo "search localdomain" >> /etc/resolv.conf
+            ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
+            mkdir -p /sys/fs/cgroup/systemd
+            mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
+            echo "[INFO] - worker node init done"
+          SHELL
+        end
         worker.vm.provision :reload
       end
     end
@@ -228,6 +254,7 @@ Vagrant.configure(2) do |config|
       end
       controller.vm.provision "shell", run: "once", path: "./scripts/k8s-hyperv-ip-fix.sh", privileged: true, env: {
         "GATEWAY_IP" => GATEWAY_IP,
+        "NET_RANGE" => NET_RANGE,
         "CURRENT_IP" => CONTROLLER_IP
       }
     else
