@@ -198,21 +198,19 @@ Vagrant.configure(2) do |config|
         "CONTAINERD_VERSION" => CONTAINERD_VERSION,
         "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
       }
+      worker.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
+        modprobe br_netfilter
+        swapoff -a
+        mkdir -p /run/systemd/resolve
+        echo "nameserver 8.8.8.8" > /etc/resolv.conf
+        echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+        echo "search localdomain" >> /etc/resolv.conf
+        ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
+        mkdir -p /sys/fs/cgroup/systemd
+        mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
+        echo "[INFO] - worker node init done"
+      SHELL
       if PROVIDER == "hyperv"
-        worker.trigger.after :reload do
-          worker.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
-            modprobe br_netfilter
-            swapoff -a
-            mkdir -p /run/systemd/resolve
-            echo "nameserver 8.8.8.8" > /etc/resolv.conf
-            echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-            echo "search localdomain" >> /etc/resolv.conf
-            ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
-            mkdir -p /sys/fs/cgroup/systemd
-            mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
-            echo "[INFO] - worker node init done"
-          SHELL
-        end
         worker.vm.provision :reload
       end
     end
@@ -280,7 +278,7 @@ Vagrant.configure(2) do |config|
         controller.vm.provision :reload
     end
     controller.vm.provision "shell", run: "once", path: "./scripts/k8s-api-server-setup.sh", privileged: true
-    controller.vm.provision "shell", run: "once", privileged: true, inline: <<-SHELL
+    controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
       cp /shared/hosts /etc/hosts
     SHELL
     controller.vm.provision "shell", run: "once", privileged: false, env: {
