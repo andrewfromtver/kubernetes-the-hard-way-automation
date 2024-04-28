@@ -4,3 +4,4 @@ shared/k8s_*
 shared/hosts
 deployment.log
 secrets.yaml
+teamcity

@@ -198,6 +198,9 @@ Vagrant.configure(2) do |config|
         "CONTAINERD_VERSION" => CONTAINERD_VERSION,
         "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
       }
+      if PROVIDER == "hyperv"
+        worker.vm.provision :reload
+      end
       worker.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
         modprobe br_netfilter
         swapoff -a
@@ -210,9 +213,6 @@ Vagrant.configure(2) do |config|
         mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
         echo "[INFO] - worker node init done"
       SHELL
-      if PROVIDER == "hyperv"
-        worker.vm.provision :reload
-      end
     end
   end
 
