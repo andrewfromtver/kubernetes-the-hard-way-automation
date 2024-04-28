@@ -281,7 +281,7 @@ kubectl config set-cluster k8s-selfhosted-cluster \
 kubectl config set-credentials admin \
   --client-certificate=${KEYS_SHARED_FOLDER_PATH}/admin.pem \
   --client-key=${KEYS_SHARED_FOLDER_PATH}/admin-key.pem \
-  --token=${DASHBOARD_USER_TOKEN} \
+  --token="DASHBOARD_USER_TOKEN" \
   --embed-certs=true \
   --kubeconfig=admin.kubeconfig
 

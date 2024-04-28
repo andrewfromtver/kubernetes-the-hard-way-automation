@@ -47,7 +47,6 @@ SERVICE_CLUSTER_GATEWAY = network["service_cluster_gateway"]    # cluster gatewa
 
 ENCRYPTION_KEY = secrets["k8s_encrypt_key"]                     # k8s encryption key
 ETCD_TOKEN = secrets["etcd_token"]                              # etcd token
-DASHBOARD_USER_TOKEN = secrets["dashboard_token"]               # kubernetes dashboard access token
 
 EXPIRY = cert["expiry"]                                         # cert expire time
 ALGO = cert["algo"]                                             # cert algo
@@ -152,7 +151,6 @@ Vagrant.configure(2) do |config|
           "ST" => ST,
           "SERVICE_CLUSTER_GATEWAY" => SERVICE_CLUSTER_GATEWAY,
           "GATEWAY_IP" => GATEWAY_IP,
-          "DASHBOARD_USER_TOKEN" => DASHBOARD_USER_TOKEN,
           "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
           "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
           "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
@@ -305,6 +303,8 @@ Vagrant.configure(2) do |config|
       kubectl patch storageclass default \
         -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' \
         --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+      TOKEN=$(kubectl get secret dashboard-user -n kube-system -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d)
+      sed -i "s/DASHBOARD_USER_TOKEN/${TOKEN}/g" ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
     SHELL
   end
 end

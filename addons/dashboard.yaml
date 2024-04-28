@@ -1,15 +1,10 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: kubernetes-dashboard
----
-apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 ---
 kind: Service
 apiVersion: v1
@@ -17,7 +12,7 @@ metadata:
   labels:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 spec:
   ports:
     - port: 443
@@ -31,7 +26,7 @@ metadata:
   labels:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard-certs
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 type: Opaque
 ---
 apiVersion: v1
@@ -40,7 +35,7 @@ metadata:
   labels:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard-csrf
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 type: Opaque
 data:
   csrf: ""
@@ -51,7 +46,7 @@ metadata:
   labels:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard-key-holder
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 type: Opaque
 ---
 kind: ConfigMap
@@ -60,7 +55,7 @@ metadata:
   labels:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard-settings
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -68,7 +63,7 @@ metadata:
   labels:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 rules:
   # Allow Dashboard to get, update and delete Dashboard exclusive secrets.
   - apiGroups: [""]
@@ -108,7 +103,7 @@ metadata:
   labels:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -116,7 +111,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: kubernetes-dashboard
-    namespace: kubernetes-dashboard
+    namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -129,7 +124,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: kubernetes-dashboard
-    namespace: kubernetes-dashboard
+    namespace: kube-system
 ---
 kind: Deployment
 apiVersion: apps/v1
@@ -137,7 +132,7 @@ metadata:
   labels:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -161,7 +156,7 @@ spec:
               protocol: TCP
           args:
             - --auto-generate-certificates
-            - --namespace=kubernetes-dashboard
+            - --namespace=kube-system
             # Uncomment the following line to manually specify Kubernetes API server Host
             # If not specified, Dashboard will attempt to auto discover the API server and connect
             # to it. Uncomment only if the default does not work.
@@ -204,7 +199,7 @@ metadata:
   labels:
     k8s-app: dashboard-metrics-scraper
   name: dashboard-metrics-scraper
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 spec:
   ports:
     - port: 8000
@@ -218,7 +213,7 @@ metadata:
   labels:
     k8s-app: dashboard-metrics-scraper
   name: dashboard-metrics-scraper
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -270,12 +265,16 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
   name: dashboard-user
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 --- 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
   name: dashboard-user
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -284,13 +283,15 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: dashboard-user
-  namespace: kubernetes-dashboard
+  namespace: kube-system
 ---
 apiVersion: v1
 kind: Secret
 metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
   name: dashboard-user
-  namespace: kubernetes-dashboard
+  namespace: kube-system
   annotations:
     kubernetes.io/service-account.name: "dashboard-user"   
 type: kubernetes.io/service-account-token 
