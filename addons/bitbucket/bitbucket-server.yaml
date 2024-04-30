@@ -61,6 +61,7 @@ spec:
       labels:
         app: bitbucket-server
     spec:
+      hostname: bitbucket
       containers:
         - name: bitbucket
           image: atlassian/bitbucket:8.19-jdk17
@@ -69,11 +70,11 @@ spec:
               cpu: 500m
               memory: 512Mi
             limits:
-              cpu: 4
-              memory: 4Gi
+              cpu: 3
+              memory: 3Gi
           volumeMounts:
             - name: bitbucket-server-data
-              mountPath: /var/atlassian/bitbucket
+              mountPath: /var/atlassian/application-data/bitbucket
           ports:
             - containerPort: 7990
               name: http

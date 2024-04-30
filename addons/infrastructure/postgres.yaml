@@ -29,7 +29,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres-db
+  name: postgres
   namespace: infrastructure
 spec:
   selector:
@@ -48,7 +48,7 @@ metadata:
   name: postgres-db
   namespace: infrastructure
 spec:
-  serviceName: postgres-db
+  serviceName: postgres
   replicas: 1
   selector:
     matchLabels:
@@ -66,8 +66,8 @@ spec:
               cpu: 50m
               memory: 64Mi
             limits:
-              cpu: 1
-              memory: 1Gi
+              cpu: 500m
+              memory: 512Mi
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data

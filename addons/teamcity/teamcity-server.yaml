@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: teamcity-server-pv
+  name: teamcity-server-data-pv
   labels:
     app: teamcity-server
 spec:
@@ -9,9 +9,9 @@ spec:
     storage: 2Gi
   accessModes:
     - ReadWriteOnce
-  storageClassName: teamcity-server
+  storageClassName: teamcity-server-data
   hostPath:
-    path: /mnt/data/teamcity-server
+    path: /mnt/data/teamcity-server-data
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -19,7 +19,63 @@ metadata:
   name: teamcity-server-data
   namespace: teamcity
 spec:
-  storageClassName: teamcity-server
+  storageClassName: teamcity-server-data
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: teamcity-server-logs-pv
+  labels:
+    app: teamcity-server
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: teamcity-server-logs
+  hostPath:
+    path: /mnt/data/teamcity-server-logs
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teamcity-server-logs
+  namespace: teamcity
+spec:
+  storageClassName: teamcity-server-logs
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: teamcity-server-temp-pv
+  labels:
+    app: teamcity-server
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: teamcity-server-temp
+  hostPath:
+    path: /mnt/data/teamcity-server-temp
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teamcity-server-temp
+  namespace: teamcity
+spec:
+  storageClassName: teamcity-server-temp
   accessModes:
     - ReadWriteOnce
   resources:
@@ -57,13 +113,18 @@ spec:
       labels:
         app: teamcity-server
     spec:
+      hostname: teamcity
       initContainers:
-        - name: set-data-dir-ownership
+        - name: set-permissions
           image: alpine:3
-          command: ["sh", "-c", "chown -R 1000:1000 /data/teamcity_server/datadir"]
+          command: ["sh", "-c", "chown -R 1000:1000 /data/teamcity_server/datadir; chown -R 1000:1000 /opt/teamcity"]
           volumeMounts:
             - name: teamcity-server-data
               mountPath: /data/teamcity_server/datadir
+            - name: teamcity-server-logs
+              mountPath: /opt/teamcity/logs
+            - name: teamcity-server-temp
+              mountPath: /opt/teamcity/temp
       containers:
         - name: teamcity
           image: jetbrains/teamcity-server:2024.03
@@ -72,11 +133,15 @@ spec:
               cpu: 500m
               memory: 512Mi
             limits:
-              cpu: 4
-              memory: 4Gi
+              cpu: 3
+              memory: 3Gi
           volumeMounts:
             - name: teamcity-server-data
               mountPath: /data/teamcity_server/datadir
+            - name: teamcity-server-logs
+              mountPath: /opt/teamcity/logs
+            - name: teamcity-server-logs
+              mountPath: /opt/teamcity/temp
           ports:
             - containerPort: 8111
               name: http
@@ -105,3 +170,9 @@ spec:
         - name: teamcity-server-data
           persistentVolumeClaim:
             claimName: teamcity-server-data
+        - name: teamcity-server-logs
+          persistentVolumeClaim:
+            claimName: teamcity-server-logs
+        - name: teamcity-server-temp
+          persistentVolumeClaim:
+            claimName: teamcity-server-temp
