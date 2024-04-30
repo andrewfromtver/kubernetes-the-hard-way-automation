@@ -32,6 +32,6 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 
 ![k8s-vm-ware](./docs/screenshots/04_vm-ware.png)
 
-![teamcity](./docs/screenshots/05_teamcity)
+![teamcity](./docs/screenshots/05_teamcity.png)
 
-![bitbucket](./docs/screenshots/06_bitbucket)
+![bitbucket](./docs/screenshots/06_bitbucket.png)
