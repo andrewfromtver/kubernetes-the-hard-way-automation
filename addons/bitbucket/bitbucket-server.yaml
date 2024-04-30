@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bitbucket-server-pv
+  labels:
+    app: bitbucket-server
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: bitbucket-server
+  hostPath:
+    path: /mnt/data/bitbucket-server
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bitbucket-server-data
+  namespace: bitbucket
+spec:
+  storageClassName: bitbucket-server
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bitbucket-server
+  namespace: bitbucket
+spec:
+  selector:
+    app: bitbucket-server
+  ports:
+    - name: http
+      protocol: TCP
+      port: 7990
+      targetPort: 7990
+    - name: "ssh"
+      protocol: TCP
+      port: 7999
+      targetPort: 7999
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: bitbucket-server
+  name: bitbucket-server
+  namespace: bitbucket
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bitbucket-server
+  template:
+    metadata:
+      labels:
+        app: bitbucket-server
+    spec:
+      containers:
+        - name: bitbucket
+          image: atlassian/bitbucket:8.19-jdk17
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 4
+              memory: 4Gi
+          volumeMounts:
+            - name: bitbucket-server-data
+              mountPath: /var/atlassian/bitbucket
+          ports:
+            - containerPort: 7990
+              name: http
+              protocol: TCP
+            - containerPort: 7999
+              name: ssh
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 15
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 15
+          securityContext:
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: bitbucket-server-data
+          persistentVolumeClaim:
+            claimName: bitbucket-server-data

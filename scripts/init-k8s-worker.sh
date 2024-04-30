@@ -91,7 +91,7 @@ ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
 mkdir -p /sys/fs/cgroup/systemd
 mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
 
-apt-get -y install socat conntrack ipset
+dpkg -i $DISTR_SHARED_FOLDER_PATH/apt_packages/*.deb
 
 mkdir -p \
   /etc/cni/net.d \

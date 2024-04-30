@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-data-pv
+  labels:
+    app: postgres
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: postgres-db
+  hostPath:
+    path: /mnt/data/postgres
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: infrastructure
+spec:
+  storageClassName: postgres-db
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-db
+  namespace: infrastructure
+spec:
+  selector:
+    app: postgres-db
+  ports:
+    - name: postgres
+      protocol: TCP
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: postgres-db
+  name: postgres-db
+  namespace: infrastructure
+spec:
+  serviceName: postgres-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-db
+  template:
+    metadata:
+      labels:
+        app: postgres-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15.6
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+          ports:
+            - containerPort: 5432
+              name: postgres
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "postgres", "-h", "localhost"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "postgres", "-h", "localhost"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          env:
+            - name: POSTGRES_DB
+              value: postgres
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-data
+        - name: init
+          configMap:
+            name: init-databases-configmap
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: init-databases-configmap
+  namespace: infrastructure
+data:
+  init.sql: |
+    -- Create the teamcity database
+    CREATE DATABASE teamcity;
+
+    -- Grant full access to the postgres user on the teamcity database
+    GRANT ALL PRIVILEGES ON DATABASE teamcity TO postgres;
+
+    -- Create the bitbucket database
+    CREATE DATABASE bitbucket;
+
+    -- Grant full access to the postgres user on the bitbucket database
+    GRANT ALL PRIVILEGES ON DATABASE bitbucket TO postgres;

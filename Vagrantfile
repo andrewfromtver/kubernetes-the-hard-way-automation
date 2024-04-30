@@ -10,7 +10,11 @@ resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
 
-DOWNLOAD_BINS = true                                            # download k8s and common bins while deploying cluster, first init should be done with [true]
+DOWNLOAD_DISTRS = false                                         # download k8s bins, common bins and deb packages while deploying cluster, first init should be done with [true]
+
+APPLY_INFRASTRUCTURE_COMPONENTS = true                          # apply DB and other components in infrastructure namespace
+APPLY_TEAMCITY = true                                           # apply teamcity CI-CD tool in teamcity namespace
+APPLY_BITBUCKET = true                                          # apply bitbucket VCS tool in bitbucket namespace
 
 PROVIDER = "virtualbox"                                         # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                            # show vms in provider gui
@@ -120,8 +124,8 @@ Vagrant.configure(2) do |config|
         worker.vm.network "private_network", ip: WORKER_IPS_ARRAY[i - 1]
         worker.vm.synced_folder "./shared", "/shared"
       end
-      if (i == 1) then
-        if (DOWNLOAD_BINS == true) then
+      if i == 1
+        if DOWNLOAD_DISTRS == true
           worker.vm.provision "shell", run: "once", path: "./scripts/download-etcd-and-cfssl.sh", privileged: false, env: {
             "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
             "ETCD_VERSION" => ETCD_VERSION,
@@ -139,6 +143,13 @@ Vagrant.configure(2) do |config|
             "CNI_VERSION" => CNI_VERSION,
             "CONTAINERD_VERSION" => CONTAINERD_VERSION
           }
+          worker.vm.provision "shell", run: "once", privileged: true, env: {
+              "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH
+            }, inline: <<-SHELL
+            mkdir -p $DISTR_SHARED_FOLDER_PATH/apt_packages
+            cd $DISTR_SHARED_FOLDER_PATH/apt_packages
+            apt-get download socat conntrack ipset libnfnetlink0 libipset13 libnetfilter-conntrack3 iptables libip6tc2
+          SHELL
         end
         worker.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-config-gen.sh", privileged: true, env: {
           "EXPIRY" => EXPIRY,
@@ -279,7 +290,9 @@ Vagrant.configure(2) do |config|
     end
     controller.vm.provision "shell", run: "once", path: "./scripts/k8s-api-server-setup.sh", privileged: true
     controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
+      # update hosts file
       cp /shared/hosts /etc/hosts
+      echo "[INFO] - /etc/hosts file updated"
     SHELL
     controller.vm.provision "shell", run: "once", privileged: false, env: {
         "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
@@ -296,13 +309,64 @@ Vagrant.configure(2) do |config|
       # test local healthz
       curl https://127.0.0.1:6443/healthz --cacert ${KEYS_SHARED_FOLDER_PATH}/ca.pem -s
       # apply addons
-      kubectl apply -f /addons --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+      kubectl apply -f /addons/kube-system --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
       sleep $SERVICE_RESTART_INTERVAL
-      kubectl patch storageclass default \
-        -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' \
-        --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
       TOKEN=$(kubectl get secret dashboard-user -n kube-system -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d)
       sed -i "s/DASHBOARD_USER_TOKEN/${TOKEN}/g" ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
     SHELL
+    if APPLY_INFRASTRUCTURE_COMPONENTS == true
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # install infrastructure components
+        kubectl create namespace infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl apply -f /addons/infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        echo "[INFO] - infrastructure components are in INSTALLED mode"
+      SHELL
+    else
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # uninstall infrastructure namespase
+        kubectl delete namespace infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        echo "[INFO] - infrastructure components are in UNINSTALLED mode"
+      SHELL
+    end
+    if APPLY_TEAMCITY == true
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # install teamcity
+        kubectl create namespace teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl apply -f /addons/teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        echo "[INFO] - teamcity component is in INSTALLED mode"
+      SHELL
+    else
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # uninstall teamcity namespase
+        kubectl delete namespace teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        echo "[INFO] - teamcity component is in UNINSTALLED mode"
+      SHELL
+    end
+    if APPLY_BITBUCKET == true
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # install bitbucket
+        kubectl create namespace bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl apply -f /addons/bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        echo "[INFO] - bitbucket component is in INSTALLED mode"
+      SHELL
+    else
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # uninstall bitbucket namespase
+        kubectl delete namespace bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        echo "[INFO] - bitbucket component is in UNINSTALLED mode"
+      SHELL
+    end
   end
 end
