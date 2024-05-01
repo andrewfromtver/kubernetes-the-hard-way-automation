@@ -58,6 +58,8 @@ RestartSec=${SERVICE_RESTART_INTERVAL}
 WantedBy=multi-user.target
 EOF
 
+BASE_64_ENCRYPTION_KEY=$(echo -n "$ENCRYPTION_KEY" | base64)
+
 # Set encryption
 cat > /etc/kubernetes/config/encryption-config.yaml <<EOF
 kind: EncryptionConfig
@@ -69,7 +71,7 @@ resources:
       - aescbc:
           keys:
             - name: key1
-              secret: ${ENCRYPTION_KEY}
+              secret: ${BASE_64_ENCRYPTION_KEY}
       - identity: {}
 EOF
 
