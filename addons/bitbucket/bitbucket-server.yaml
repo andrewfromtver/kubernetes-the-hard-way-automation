@@ -65,6 +65,13 @@ spec:
         app: bitbucket-server
     spec:
       hostname: bitbucket
+      initContainers:
+        - name: set-permissions
+          image: alpine:3
+          command: ["sh", "-c", "chown -R 2003:2003 /var/atlassian/application-data/bitbucket"]
+          volumeMounts:
+            - name: bitbucket-server-data
+              mountPath: /var/atlassian/application-data/bitbucket
       containers:
         - name: bitbucket
           image: atlassian/bitbucket:8.19-jdk17

@@ -321,7 +321,8 @@ Vagrant.configure(2) do |config|
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
         }, inline: <<-SHELL
         # install infrastructure components
-        kubectl create namespace infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl create namespace infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
         kubectl apply -f /addons/infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - infrastructure components are in INSTALLED mode"
       SHELL
@@ -339,7 +340,8 @@ Vagrant.configure(2) do |config|
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
         }, inline: <<-SHELL
         # install teamcity
-        kubectl create namespace teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl create namespace teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
         kubectl apply -f /addons/teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - teamcity component is in INSTALLED mode"
       SHELL
@@ -357,7 +359,8 @@ Vagrant.configure(2) do |config|
           "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
         }, inline: <<-SHELL
         # install bitbucket
-        kubectl create namespace bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl create namespace bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
         kubectl apply -f /addons/bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - bitbucket component is in INSTALLED mode"
       SHELL
@@ -375,7 +378,8 @@ Vagrant.configure(2) do |config|
           "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
         }, inline: <<-SHELL
         # install nexus
-        kubectl create namespace nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl create namespace nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
         kubectl apply -f /addons/nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - nexus component is in INSTALLED mode"
       SHELL

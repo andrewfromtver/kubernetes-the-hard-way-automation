@@ -58,6 +58,14 @@ spec:
       labels:
         app: postgres-db
     spec:
+      hostname: postgres
+      initContainers:
+        - name: set-permissions
+          image: alpine:3
+          command: ["sh", "-c", "chown -R 999:999 /var/lib/postgresql/data"]
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
       containers:
         - name: postgres
           image: postgres:15.6
