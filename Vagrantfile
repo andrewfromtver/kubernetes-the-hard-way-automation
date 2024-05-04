@@ -17,6 +17,7 @@ APPLY_INFRASTRUCTURE_COMPONENTS = addons["infrastructure"]      # apply DB and o
 APPLY_TEAMCITY = addons["teamcity"]                             # apply teamcity CI-CD tool in teamcity namespace
 APPLY_BITBUCKET = addons["bitbucket"]                           # apply bitbucket VCS tool in bitbucket namespace
 APPLY_NEXUS = addons["nexus"]                                   # apply nexus registry tool in nexus namespace
+APPLY_SONARQUBE = addons["sonarqube"]                           # apply sonarqube code quality tool in sonarqube namespace
 
 PROVIDER = "virtualbox"                                         # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                            # show vms in provider gui
@@ -390,6 +391,25 @@ Vagrant.configure(2) do |config|
         # uninstall nexus namespase
         kubectl delete namespace nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - nexus component is in UNINSTALLED mode"
+      SHELL
+    end
+    if APPLY_SONARQUBE == true
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # install sonarqube
+        kubectl create namespace sonarqube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
+        kubectl apply -f /addons/sonarqube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        echo "[INFO] - sonarqube component is in INSTALLED mode"
+      SHELL
+    else
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # uninstall sonarqube namespase
+        kubectl delete namespace sonarqube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        echo "[INFO] - sonarqube component is in UNINSTALLED mode"
       SHELL
     end
   end

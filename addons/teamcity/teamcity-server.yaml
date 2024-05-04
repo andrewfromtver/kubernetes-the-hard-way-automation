@@ -152,7 +152,7 @@ spec:
             failureThreshold: 3
             httpGet:
               path: /favicon.ico
-              port: 8111
+              port: http
               scheme: HTTP
             initialDelaySeconds: 120
             periodSeconds: 10
@@ -162,7 +162,7 @@ spec:
             failureThreshold: 3
             httpGet:
               path: /favicon.ico
-              port: 8111
+              port: http
               scheme: HTTP
             initialDelaySeconds: 60
             periodSeconds: 10
