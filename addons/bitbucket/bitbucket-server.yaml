@@ -8,7 +8,7 @@ spec:
   capacity:
     storage: 2Gi
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: bitbucket-server
   hostPath:
     path: /mnt/data/bitbucket-server
@@ -21,7 +21,7 @@ metadata:
 spec:
   storageClassName: bitbucket-server
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 2Gi
@@ -32,6 +32,7 @@ metadata:
   name: bitbucket-server
   namespace: bitbucket
 spec:
+  type: NodePort
   selector:
     app: bitbucket-server
   ports:
@@ -39,10 +40,12 @@ spec:
       protocol: TCP
       port: 7990
       targetPort: 7990
+      nodePort: 30002
     - name: "ssh"
       protocol: TCP
       port: 7999
       targetPort: 7999
+      nodePort: 30003
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -70,8 +73,8 @@ spec:
               cpu: 500m
               memory: 512Mi
             limits:
-              cpu: 3
-              memory: 6Gi
+              cpu: 2
+              memory: 4Gi
           volumeMounts:
             - name: bitbucket-server-data
               mountPath: /var/atlassian/application-data/bitbucket

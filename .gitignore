@@ -2,5 +2,6 @@
 shared/distr
 shared/k8s_*
 shared/hosts
+data/*/*
 deployment.log
 secrets.yaml

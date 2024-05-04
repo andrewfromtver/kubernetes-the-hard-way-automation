@@ -8,7 +8,7 @@ spec:
   capacity:
     storage: 5Gi
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: postgres-db
   hostPath:
     path: /mnt/data/postgres
@@ -21,7 +21,7 @@ metadata:
 spec:
   storageClassName: postgres-db
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 5Gi

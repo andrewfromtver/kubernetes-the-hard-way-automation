@@ -9,12 +9,14 @@ secrets = YAML.load_file("#{current_dir}/secrets.yaml")
 resources = YAML.load_file("#{current_dir}/resources.yaml")
 network = YAML.load_file("#{current_dir}/network.yaml")
 cert = YAML.load_file("#{current_dir}/cert.yaml")
+addons = YAML.load_file("#{current_dir}/addons.yaml")
 
 DOWNLOAD_DISTRS = false                                         # download k8s bins, common bins and deb packages while deploying cluster, first init should be done with [true]
 
-APPLY_INFRASTRUCTURE_COMPONENTS = true                          # apply DB and other components in infrastructure namespace
-APPLY_TEAMCITY = true                                           # apply teamcity CI-CD tool in teamcity namespace
-APPLY_BITBUCKET = true                                          # apply bitbucket VCS tool in bitbucket namespace
+APPLY_INFRASTRUCTURE_COMPONENTS = addons["infrastructure"]      # apply DB and other components in infrastructure namespace
+APPLY_TEAMCITY = addons["teamcity"]                             # apply teamcity CI-CD tool in teamcity namespace
+APPLY_BITBUCKET = addons["bitbucket"]                           # apply bitbucket VCS tool in bitbucket namespace
+APPLY_NEXUS = addons["nexus"]                                   # apply nexus registry tool in nexus namespace
 
 PROVIDER = "virtualbox"                                         # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                            # show vms in provider gui
@@ -366,6 +368,24 @@ Vagrant.configure(2) do |config|
         # uninstall bitbucket namespase
         kubectl delete namespace bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - bitbucket component is in UNINSTALLED mode"
+      SHELL
+    end
+    if APPLY_NEXUS == true
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # install nexus
+        kubectl create namespace nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl apply -f /addons/nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        echo "[INFO] - nexus component is in INSTALLED mode"
+      SHELL
+    else
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # uninstall nexus namespase
+        kubectl delete namespace nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        echo "[INFO] - nexus component is in UNINSTALLED mode"
       SHELL
     end
   end
