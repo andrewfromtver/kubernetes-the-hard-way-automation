@@ -130,3 +130,9 @@ data:
 
     -- Grant full access to the postgres user on the bitbucket database
     GRANT ALL PRIVILEGES ON DATABASE bitbucket TO postgres;
+
+    -- Create the sonarqube database
+    CREATE DATABASE sonarqube;
+
+    -- Grant full access to the postgres user on the sonarqube database
+    GRANT ALL PRIVILEGES ON DATABASE sonarqube TO postgres;

@@ -77,8 +77,9 @@ mv ${HOSTNAME}.kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/${HOSTNAME}.kubeconfig
 
 # prepare node
 modprobe br_netfilter
-swapoff -a
 echo "vm.swappiness = 1" >> /etc/sysctl.conf
+echo "vm.max_map_count = 262144" >> /etc/sysctl.conf
+sysctl -p
 
 systemctl stop containerd kubelet kube-proxy
 

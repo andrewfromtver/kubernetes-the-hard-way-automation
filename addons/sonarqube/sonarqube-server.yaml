@@ -202,6 +202,13 @@ spec:
             timeoutSeconds: 15
           securityContext:
             readOnlyRootFilesystem: true
+          env:
+            - name: SONAR_JDBC_URL
+              value: jdbc:postgresql://postgres.infrastructure/sonarqube
+            - name: SONAR_JDBC_USERNAME
+              value: postgres
+            - name: SONAR_JDBC_PASSWORD
+              value: postgres
       volumes:
         - name: sonarqube-server-data
           persistentVolumeClaim:

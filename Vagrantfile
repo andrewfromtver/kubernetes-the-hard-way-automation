@@ -217,7 +217,6 @@ Vagrant.configure(2) do |config|
       end
       worker.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
         modprobe br_netfilter
-        swapoff -a
         mkdir -p /run/systemd/resolve
         echo "nameserver 8.8.8.8" > /etc/resolv.conf
         echo "nameserver 8.8.4.4" >> /etc/resolv.conf
