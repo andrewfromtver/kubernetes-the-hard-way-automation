@@ -166,7 +166,7 @@ spec:
               memory: 512Mi
             limits:
               cpu: 1
-              memory: 2Gi
+              memory: 3Gi
           volumeMounts:
             - name: sonarqube-server-data
               mountPath: /opt/sonarqube/data

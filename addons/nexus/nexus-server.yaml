@@ -136,7 +136,7 @@ spec:
               memory: 512Mi
             limits:
               cpu: 1
-              memory: 2Gi
+              memory: 3Gi
           volumeMounts:
             - name: nexus-server-data
               mountPath: /nexus-data
