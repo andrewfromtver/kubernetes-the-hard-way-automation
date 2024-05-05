@@ -105,9 +105,10 @@ spec:
         image: coredns/coredns:1.7.0
         imagePullPolicy: IfNotPresent
         resources:
-          limits:
-            memory: 170Mi
           requests:
+            cpu: 100m
+            memory: 70Mi
+          limits:
             cpu: 100m
             memory: 70Mi
         args: [ "-conf", "/etc/coredns/Corefile" ]

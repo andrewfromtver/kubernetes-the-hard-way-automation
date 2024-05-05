@@ -165,7 +165,7 @@ spec:
               cpu: 500m
               memory: 512Mi
             limits:
-              cpu: 1
+              cpu: 2
               memory: 3Gi
           volumeMounts:
             - name: sonarqube-server-data

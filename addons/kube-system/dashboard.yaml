@@ -153,6 +153,13 @@ spec:
         - name: kubernetes-dashboard
           image: kubernetesui/dashboard:v2.7.0
           imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
           ports:
             - containerPort: 8443
               protocol: TCP
@@ -234,6 +241,13 @@ spec:
       containers:
         - name: dashboard-metrics-scraper
           image: kubernetesui/metrics-scraper:v1.0.8
+          resources:
+            requests:
+              cpu: 100m
+              memory: 70Mi
+            limits:
+              cpu: 100m
+              memory: 70Mi
           ports:
             - containerPort: 8000
               protocol: TCP

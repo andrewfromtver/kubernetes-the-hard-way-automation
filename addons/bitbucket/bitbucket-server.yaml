@@ -80,8 +80,8 @@ spec:
               cpu: 500m
               memory: 512Mi
             limits:
-              cpu: 1
-              memory: 3Gi
+              cpu: 2
+              memory: 4Gi
           volumeMounts:
             - name: bitbucket-server-data
               mountPath: /var/atlassian/application-data/bitbucket

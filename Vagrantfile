@@ -331,8 +331,10 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
         }, inline: <<-SHELL
-        # uninstall infrastructure namespase
+        # uninstall infrastructure namespase and pvs
         kubectl delete namespace infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        kubectl delete pv postgres-data-pv \
+          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - infrastructure components are in UNINSTALLED mode"
       SHELL
     end
@@ -350,8 +352,10 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
         }, inline: <<-SHELL
-        # uninstall teamcity namespase
+        # uninstall teamcity namespase and pvs
         kubectl delete namespace teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        kubectl delete pv teamcity-server-data-pv teamcity-server-logs-pv teamcity-server-temp-pv \
+          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - teamcity component is in UNINSTALLED mode"
       SHELL
     end
@@ -369,8 +373,10 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
         }, inline: <<-SHELL
-        # uninstall bitbucket namespase
+        # uninstall bitbucket namespase and pv
         kubectl delete namespace bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        kubectl delete pv bitbucket-server-pv \
+          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - bitbucket component is in UNINSTALLED mode"
       SHELL
     end
@@ -388,8 +394,10 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
         }, inline: <<-SHELL
-        # uninstall nexus namespase
+        # uninstall nexus namespase and pvs
         kubectl delete namespace nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        kubectl delete pv nexus-server-data-pv nexus-server-logs-pv nexus-server-temp-pv \
+          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - nexus component is in UNINSTALLED mode"
       SHELL
     end
@@ -407,8 +415,10 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
         }, inline: <<-SHELL
-        # uninstall sonarqube namespase
+        # uninstall sonarqube namespase and pvs
         kubectl delete namespace sonarqube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        kubectl delete pv sonarqube-server-data-pv sonarqube-server-temp-pv sonarqube-server-logs-pv sonarqube-server-extensions-pv \
+          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - sonarqube component is in UNINSTALLED mode"
       SHELL
     end
