@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    k8s-app: debug
+    pod-security.kubernetes.io/enforce: privileged
+  name: kube-debug
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: alpine
+  namespace: kube-debug
+  labels:
+    k8s-app: debug
+    kubernetes.io/name: "AlpineDebugTool"
+spec:
+  selector:
+    matchLabels:
+      k8s-app: alpine-debug-tool
+  template:
+    metadata:
+      labels:
+        k8s-app: alpine-debug-tool
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+      - name: alpine
+        image: alpine
+        imagePullPolicy: IfNotPresent
+        command: [ "sleep", "infinity" ]
+        resources:
+          requests:
+            cpu: 50m
+            memory: 50Mi
+          limits:
+            cpu: 100m
+            memory: 100Mi

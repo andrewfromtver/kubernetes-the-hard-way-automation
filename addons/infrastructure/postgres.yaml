@@ -71,11 +71,11 @@ spec:
           image: postgres:15.6
           resources:
             requests:
-              cpu: 50m
-              memory: 64Mi
+              cpu: 100m
+              memory: 200Mi
             limits:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 1
+              memory: 2Gi
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
@@ -130,6 +130,12 @@ data:
 
     -- Grant full access to the postgres user on the bitbucket database
     GRANT ALL PRIVILEGES ON DATABASE bitbucket TO postgres;
+
+    -- Create the jira database
+    CREATE DATABASE jira;
+
+    -- Grant full access to the postgres user on the jira database
+    GRANT ALL PRIVILEGES ON DATABASE jira TO postgres;
 
     -- Create the sonarqube database
     CREATE DATABASE sonarqube;

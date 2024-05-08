@@ -155,11 +155,11 @@ spec:
           imagePullPolicy: Always
           resources:
             requests:
-              cpu: 200m
-              memory: 128Mi
+              cpu: 250m
+              memory: 250Mi
             limits:
-              cpu: 200m
-              memory: 128Mi
+              cpu: 500m
+              memory: 500Mi
           ports:
             - containerPort: 8443
               protocol: TCP
@@ -243,11 +243,11 @@ spec:
           image: kubernetesui/metrics-scraper:v1.0.8
           resources:
             requests:
-              cpu: 100m
-              memory: 70Mi
+              cpu: 250m
+              memory: 250Mi
             limits:
-              cpu: 100m
-              memory: 70Mi
+              cpu: 500m
+              memory: 500Mi
           ports:
             - containerPort: 8000
               protocol: TCP

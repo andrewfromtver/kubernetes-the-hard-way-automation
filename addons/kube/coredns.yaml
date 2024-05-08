@@ -72,7 +72,7 @@ data:
     }
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: coredns
   namespace: kube-system
@@ -80,11 +80,6 @@ metadata:
     k8s-app: kube-dns
     kubernetes.io/name: "CoreDNS"
 spec:
-  replicas: 1
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 1
   selector:
     matchLabels:
       k8s-app: kube-dns
@@ -107,10 +102,10 @@ spec:
         resources:
           requests:
             cpu: 100m
-            memory: 70Mi
+            memory: 100Mi
           limits:
             cpu: 100m
-            memory: 70Mi
+            memory: 100Mi
         args: [ "-conf", "/etc/coredns/Corefile" ]
         volumeMounts:
         - name: config-volume

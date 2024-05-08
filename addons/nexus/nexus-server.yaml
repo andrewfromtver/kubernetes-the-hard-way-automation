@@ -132,11 +132,11 @@ spec:
           image: sonatype/nexus3:3.67.1-java11
           resources:
             requests:
-              cpu: 500m
-              memory: 512Mi
-            limits:
               cpu: 1
-              memory: 3Gi
+              memory: 2Gi
+            limits:
+              cpu: 4
+              memory: 8Gi
           volumeMounts:
             - name: nexus-server-data
               mountPath: /nexus-data

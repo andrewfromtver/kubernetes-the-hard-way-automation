@@ -16,6 +16,7 @@ DOWNLOAD_DISTRS = false                                         # download k8s b
 APPLY_INFRASTRUCTURE_COMPONENTS = addons["infrastructure"]      # apply DB and other components in infrastructure namespace
 APPLY_TEAMCITY = addons["teamcity"]                             # apply teamcity CI-CD tool in teamcity namespace
 APPLY_BITBUCKET = addons["bitbucket"]                           # apply bitbucket VCS tool in bitbucket namespace
+APPLY_JIRA = addons["jira"]                                     # apply jira task tracker tool in jira namespace
 APPLY_NEXUS = addons["nexus"]                                   # apply nexus registry tool in nexus namespace
 APPLY_SONARQUBE = addons["sonarqube"]                           # apply sonarqube code quality tool in sonarqube namespace
 
@@ -68,7 +69,7 @@ DISTR_SHARED_FOLDER_PATH = "/shared/distr"                      # distr folder
 KEYS_SHARED_FOLDER_PATH = "/shared/k8s_keys"                    # keys folder
 CONFIGS_SHARED_FOLDER_PATH = "/shared/k8s_configs"              # configs folder
 
-SERVICE_RESTART_INTERVAL = 5                                    # systemd service restart timer
+SERVICE_RESTART_INTERVAL = 5                                    # systemd service restart interval
 
 Vagrant.configure(2) do |config|
   # k8s workers deploy
@@ -82,13 +83,13 @@ Vagrant.configure(2) do |config|
         v.cpus = WORKER_CPU
         case PROVIDER
           when "virtualbox"
-            v.name = "worker-#{i}"
+            v.name = "worker-#{i} [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
             v.gui = PROVIDER_GUI
           when "hyperv"
-            v.vmname = "worker-#{i}"
+            v.vmname = "worker-#{i} [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
             v.maxmemory = WORKER_RAM + 1024
           when "vmware_desktop"
-            v.vmx["displayname"] = "worker-#{i}"
+            v.vmx["displayname"] = "worker-#{i} [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
             v.gui = PROVIDER_GUI
         end
       end
@@ -239,13 +240,13 @@ Vagrant.configure(2) do |config|
       v.cpus = CONTROLLER_CPU
       case PROVIDER
         when "virtualbox"
-          v.name = "controller"
+          v.name = "controller [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
           v.gui = PROVIDER_GUI
         when "hyperv"
-          v.vmname = "controller"
+          v.vmname = "controller [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
           v.maxmemory = CONTROLLER_RAM + 1024
         when "vmware_desktop"
-          v.vmx["displayname"] = "controller"
+          v.vmx["displayname"] = "controller [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
           v.gui = PROVIDER_GUI
       end
     end
@@ -290,7 +291,6 @@ Vagrant.configure(2) do |config|
     if PROVIDER == "hyperv"
         controller.vm.provision :reload
     end
-    controller.vm.provision "shell", run: "once", path: "./scripts/k8s-api-server-setup.sh", privileged: true
     controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
       # update hosts file
       cp /shared/hosts /etc/hosts
@@ -310,8 +310,8 @@ Vagrant.configure(2) do |config|
         --key=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem
       # test local healthz
       curl https://127.0.0.1:6443/healthz --cacert ${KEYS_SHARED_FOLDER_PATH}/ca.pem -s
-      # apply addons
-      kubectl apply -f /addons/kube-system --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+      # create addons
+      kubectl create -f /addons/kube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
       sleep $SERVICE_RESTART_INTERVAL
       TOKEN=$(kubectl get secret dashboard-user -n kube-system -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d)
       sed -i "s/DASHBOARD_USER_TOKEN/${TOKEN}/g" ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
@@ -377,6 +377,27 @@ Vagrant.configure(2) do |config|
         kubectl delete pv bitbucket-server-pv \
           --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - bitbucket component is in UNINSTALLED mode"
+      SHELL
+    end
+    if APPLY_JIRA == true
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # install jira
+        kubectl create namespace jira --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
+        kubectl apply -f /addons/jira --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        echo "[INFO] - jira component is in INSTALLED mode"
+      SHELL
+    else
+      controller.vm.provision "shell", run: "always", privileged: false, env: {
+        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        # uninstall jira namespase and pv
+        kubectl delete namespace jira --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        kubectl delete pv jira-server-pv \
+          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        echo "[INFO] - jira component is in UNINSTALLED mode"
       SHELL
     end
     if APPLY_NEXUS == true
