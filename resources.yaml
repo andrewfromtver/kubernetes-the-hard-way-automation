@@ -1,4 +1,4 @@
 controller_cpu: 2
 controller_ram: 2048
 worker_cpu: 8
-worker_ram: 8192
+worker_ram: 20480
