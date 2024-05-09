@@ -1,5 +1,5 @@
 # kubernetes-the-hard-way-automation
-Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
+This project is inspired by Kelsey Hightower's repository - kubernetes-the-hard-way.
 
 # how-to
 * install `Vagrant`
@@ -24,14 +24,6 @@ Inspired by the Kelsey Hightowers repository - kubernetes-the-hard-way
 * `HELM_VERSION 3.14.4`
 
 # screenshots
-![k8s-dashboard](./docs/screenshots/01_dashboard.png)
+![all-pods-from-lens](./docs/screenshots/all-pods-from-lens.png)
 
-![k8s-virtua-lbox](./docs/screenshots/02_virtua-lbox.png)  
-
-![k8s-hyper-v](./docs/screenshots/03_hyper-v.png)
-
-![k8s-vm-ware](./docs/screenshots/04_vm-ware.png)
-
-![teamcity](./docs/screenshots/05_teamcity.png)
-
-![bitbucket](./docs/screenshots/06_bitbucket.png)
+![all-nodes-from-kubernetes-dashboard](./docs/screenshots/all-nodes-from-kubernetes-dashboard.png)  
