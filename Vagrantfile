@@ -71,7 +71,27 @@ CONFIGS_SHARED_FOLDER_PATH = "/shared/k8s_configs"              # configs folder
 
 SERVICE_RESTART_INTERVAL = 5                                    # systemd service restart interval
 
+# network config check
+if WORKER_IPS_ARRAY.length != POD_CIDR_ARRAY.length
+  puts "[ERROR] - nodes IP count not equal to pods CIDR count, skipping VMs deploy..."
+  return
+end
+
+# Prepare routes and hosts content
+routes_content = "#!/bin/bash\n"
+hosts_content = "127.0.0.1 localhost\n#{CONTROLLER_IP} controller\n"
+counter = 0
+WORKER_IPS_ARRAY.each do |worker_ip|
+  routes_content += "ip route add #{POD_CIDR_ARRAY[counter]} via #{worker_ip}; "
+  hosts_content += "#{worker_ip} worker-#{counter + 1}\n"
+  counter += 1
+end
+
+# Write hosts_content to files
+File.write('./shared/hosts', hosts_content)
+
 Vagrant.configure(2) do |config|
+
   # k8s workers deploy
   $worker_nodes_count = WORKER_IPS_ARRAY.length()
   (1..$worker_nodes_count).each do |i|
@@ -86,7 +106,7 @@ Vagrant.configure(2) do |config|
             v.name = "worker-#{i} [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
             v.gui = PROVIDER_GUI
           when "hyperv"
-            v.vmname = "worker-#{i} [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
+            v.vmname = "worker-#{i}"
             v.maxmemory = WORKER_RAM + 1024
           when "vmware_desktop"
             v.vmx["displayname"] = "worker-#{i} [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
@@ -171,22 +191,6 @@ Vagrant.configure(2) do |config|
           "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
           "CONTROLLER_IP" => CONTROLLER_IP
         }
-        worker.vm.provision "shell", run: "once", privileged: false, env: {
-            "IP" => WORKER_IPS_ARRAY[i - 1],
-            "HOSTNAME" => "worker-#{i}",
-            "CONTROLLER_IP" => CONTROLLER_IP
-          }, inline: <<-SHELL
-          echo "127.0.0.1 localhost" > /shared/hosts
-          echo "$CONTROLLER_IP controller" >> /shared/hosts
-          echo "$IP $HOSTNAME" >> /shared/hosts
-        SHELL
-      else
-        worker.vm.provision "shell", run: "once", privileged: false, env: {
-            "IP" => WORKER_IPS_ARRAY[i - 1],
-            "HOSTNAME" => "worker-#{i}"
-          }, inline: <<-SHELL
-          echo "$IP $HOSTNAME" >> /shared/hosts
-        SHELL
       end
       worker.vm.provision "shell", run: "once", path: "./scripts/init-k8s-worker.sh", privileged: true, env: {
         "EXPIRY" => EXPIRY,
@@ -216,7 +220,17 @@ Vagrant.configure(2) do |config|
       if PROVIDER == "hyperv"
         worker.vm.provision :reload
       end
-      worker.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
+      worker.vm.provision "shell", run: "always", privileged: true, env: {
+          "ROUTES" => routes_content,
+          "POD_CIDR" => POD_CIDR_ARRAY[i - 1],
+          "NODE_IP" => WORKER_IPS_ARRAY[i - 1]
+        }, inline: <<-SHELL
+        # add routes
+        eval "$ROUTES"
+        ip route del $POD_CIDR via $NODE_IP
+        echo "[INFO] - worker node routes updated."
+
+        # post startup node init
         modprobe br_netfilter
         mkdir -p /run/systemd/resolve
         echo "nameserver 8.8.8.8" > /etc/resolv.conf
@@ -225,7 +239,8 @@ Vagrant.configure(2) do |config|
         ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
         mkdir -p /sys/fs/cgroup/systemd
         mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
-        echo "[INFO] - worker node init done"
+        echo "[INFO] - worker node init done."
+
       SHELL
     end
   end
@@ -243,7 +258,7 @@ Vagrant.configure(2) do |config|
           v.name = "controller [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
           v.gui = PROVIDER_GUI
         when "hyperv"
-          v.vmname = "controller [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
+          v.vmname = "controller"
           v.maxmemory = CONTROLLER_RAM + 1024
         when "vmware_desktop"
           v.vmx["displayname"] = "controller [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
@@ -267,6 +282,7 @@ Vagrant.configure(2) do |config|
         "NET_RANGE" => NET_RANGE,
         "CURRENT_IP" => CONTROLLER_IP
       }
+      controller.vm.provision :reload
     else
       controller.vm.network "private_network", ip: CONTROLLER_IP
       controller.vm.synced_folder "./shared", "/shared"
@@ -288,13 +304,11 @@ Vagrant.configure(2) do |config|
       "CLUSTER_CIDR" => CLUSTER_CIDR,
       "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
     }
-    if PROVIDER == "hyperv"
-        controller.vm.provision :reload
-    end
     controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
       # update hosts file
       cp /shared/hosts /etc/hosts
-      echo "[INFO] - /etc/hosts file updated"
+      echo "[INFO] - /etc/hosts file updated."
+
     SHELL
     controller.vm.provision "shell", run: "once", privileged: false, env: {
         "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
@@ -443,4 +457,5 @@ Vagrant.configure(2) do |config|
       SHELL
     end
   end
+  
 end
