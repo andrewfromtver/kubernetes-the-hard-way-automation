@@ -325,7 +325,7 @@ Vagrant.configure(2) do |config|
       # test local healthz
       curl https://127.0.0.1:6443/healthz --cacert ${KEYS_SHARED_FOLDER_PATH}/ca.pem -s
       # create addons
-      kubectl create -f /addons/kube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+      kubectl create -f /addons/kube-system --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
       sleep $SERVICE_RESTART_INTERVAL
       TOKEN=$(kubectl get secret dashboard-user -n kube-system -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d)
       sed -i "s/DASHBOARD_USER_TOKEN/${TOKEN}/g" ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
