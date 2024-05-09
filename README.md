@@ -21,7 +21,8 @@ This project is inspired by Kelsey Hightower's repository - kubernetes-the-hard-
 
 To manage the cluster, update the YAML files:
 
-* `network.yaml` to set nodes qty and IP
+* `cert.yaml` to set cluster certs options
+* `network.yaml` to set nodes qty and IP and other network options
 * `resources.yaml` to set controller/worker node CPU and RAM
 
 # Deployed apps management
