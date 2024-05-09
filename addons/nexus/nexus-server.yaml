@@ -133,10 +133,10 @@ spec:
           resources:
             requests:
               cpu: 1
-              memory: 2Gi
+              memory: 1Gi
             limits:
               cpu: 4
-              memory: 8Gi
+              memory: 4Gi
           volumeMounts:
             - name: nexus-server-data
               mountPath: /nexus-data

@@ -163,10 +163,10 @@ spec:
           resources:
             requests:
               cpu: 1
-              memory: 2Gi
+              memory: 1Gi
             limits:
-              cpu: 4
-              memory: 8Gi
+              cpu: 2
+              memory: 2Gi
           volumeMounts:
             - name: sonarqube-server-data
               mountPath: /opt/sonarqube/data

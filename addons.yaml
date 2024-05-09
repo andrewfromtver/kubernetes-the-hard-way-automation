@@ -1,6 +1,6 @@
-infrastructure: false
-teamcity: false
-bitbucket: false
+infrastructure: true
+teamcity: true
+bitbucket: true
 jira: false
 nexus: false
-sonarqube: false
+sonarqube: true
