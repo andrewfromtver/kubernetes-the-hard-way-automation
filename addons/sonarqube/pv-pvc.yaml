@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sonarqube-data
+  labels:
+    app: sonarqube
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: sonarqube
+  nfs:
+    path: /mnt/data/sonarqube
+    server: nfs
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarqube-data
+  namespace: sonarqube
+spec:
+  storageClassName: sonarqube
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi

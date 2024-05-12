@@ -77,22 +77,41 @@ mv ${HOSTNAME}.kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/${HOSTNAME}.kubeconfig
 
 # prepare node
 modprobe br_netfilter
+echo "br_netfilter" >> /etc/modules
 echo "vm.swappiness = 1" >> /etc/sysctl.conf
 echo "vm.max_map_count = 262144" >> /etc/sysctl.conf
 sysctl -p
 
-systemctl stop containerd kubelet kube-proxy
+systemctl stop containerd kubelet kube-proxy mount-systemd-cgroup
 
-mkdir -p /run/systemd/resolve
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
-echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-echo "search localdomain" >> /etc/resolv.conf
-ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
+cat <<EOF | tee /etc/systemd/system/mount-systemd-cgroup.service
+[Unit]
+Description=Mount systemd cgroup
+After=local-fs.target
 
-mkdir -p /sys/fs/cgroup/systemd
-mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
+[Service]
+Type=oneshot
+ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/systemd
+ExecStart=/bin/mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
 
-dpkg -i $DISTR_SHARED_FOLDER_PATH/apt_packages/*.deb
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Copy keys and configs
+KEYS_SHARED_FOLDER_LOCAL_PATH="/k8s/keys"
+CONFIGS_SHARED_FOLDER_LOCAL_PATH="/k8s/configs"
+
+mkdir -p $KEYS_SHARED_FOLDER_LOCAL_PATH
+mkdir -p $CONFIGS_SHARED_FOLDER_LOCAL_PATH
+
+rm -Rf $KEYS_SHARED_FOLDER_LOCAL_PATH/*
+rm -Rf $CONFIGS_SHARED_FOLDER_LOCAL_PATH/*
+
+cp $KEYS_SHARED_FOLDER_PATH/* $KEYS_SHARED_FOLDER_LOCAL_PATH
+cp $CONFIGS_SHARED_FOLDER_PATH/* $CONFIGS_SHARED_FOLDER_LOCAL_PATH
+
+dpkg -i $DISTR_SHARED_FOLDER_PATH/apt_packages/k8s/*.deb
 
 mkdir -p \
   /etc/cni/net.d \
@@ -176,9 +195,9 @@ WantedBy=multi-user.target
 EOF
 
 # configure Kubelet
-cp ${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}-key.pem ${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}.pem /var/lib/kubelet/
-cp ${CONFIGS_SHARED_FOLDER_PATH}/${HOSTNAME}.kubeconfig /var/lib/kubelet/kubeconfig
-cp ${KEYS_SHARED_FOLDER_PATH}/ca.pem /var/lib/kubernetes/
+cp ${KEYS_SHARED_FOLDER_LOCAL_PATH}/${HOSTNAME}-key.pem ${KEYS_SHARED_FOLDER_LOCAL_PATH}/${HOSTNAME}.pem /var/lib/kubelet/
+cp ${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/${HOSTNAME}.kubeconfig /var/lib/kubelet/kubeconfig
+cp ${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem /var/lib/kubernetes/
 
 cat <<EOF | tee /var/lib/kubelet/kubelet-config.yaml
 kind: KubeletConfiguration
@@ -189,17 +208,17 @@ authentication:
   webhook:
     enabled: true
   x509:
-    clientCAFile: "${KEYS_SHARED_FOLDER_PATH}/ca.pem"
+    clientCAFile: "${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem"
 authorization:
   mode: Webhook
 clusterDomain: "cluster.local"
 clusterDNS:
   - "${SERVICE_CLUSTER_DNS}"
 podCIDR: "${POD_CIDR}"
-resolvConf: "/run/systemd/resolve/resolv.conf"
+resolvConf: "/etc/resolv.conf"
 runtimeRequestTimeout: "15m"
-tlsCertFile: "${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}.pem"
-tlsPrivateKeyFile: "${KEYS_SHARED_FOLDER_PATH}/${HOSTNAME}-key.pem"
+tlsCertFile: "${KEYS_SHARED_FOLDER_LOCAL_PATH}/${HOSTNAME}.pem"
+tlsPrivateKeyFile: "${KEYS_SHARED_FOLDER_LOCAL_PATH}/${HOSTNAME}-key.pem"
 EOF
 
 cat <<EOF | tee /etc/systemd/system/kubelet.service
@@ -227,7 +246,7 @@ WantedBy=multi-user.target
 EOF
 
 # configure kube-proxy
-cp ${CONFIGS_SHARED_FOLDER_PATH}/kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
+cp ${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
 
 cat <<EOF | tee /var/lib/kube-proxy/kube-proxy-config.yaml
 kind: KubeProxyConfiguration
@@ -255,5 +274,5 @@ EOF
 
 # start node services
 systemctl daemon-reload
-systemctl start containerd kubelet kube-proxy
-systemctl enable containerd kubelet kube-proxy
+systemctl start containerd kubelet kube-proxy mount-systemd-cgroup
+systemctl enable containerd kubelet kube-proxy mount-systemd-cgroup

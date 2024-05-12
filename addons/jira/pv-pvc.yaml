@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jira-data
+  labels:
+    app: jira
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: jira
+  nfs:
+    path: /mnt/data/jira
+    server: nfs
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jira-data
+  namespace: jira
+spec:
+  storageClassName: jira
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi

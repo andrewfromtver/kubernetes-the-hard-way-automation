@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: teamcity-data
+  labels:
+    app: teamcity
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: teamcity
+  nfs:
+    path: /mnt/data/teamcity
+    server: nfs
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teamcity-data
+  namespace: teamcity
+spec:
+  storageClassName: teamcity
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi

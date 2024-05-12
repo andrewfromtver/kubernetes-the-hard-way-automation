@@ -1,4 +1,7 @@
+provider: virtualbox
+nfs_cpu: 1
+nfs_ram: 500
 controller_cpu: 1
-controller_ram: 2048
-worker_cpu: 2
-worker_ram: 4096
+controller_ram: 1500
+worker_cpu: 8
+worker_ram: 8000

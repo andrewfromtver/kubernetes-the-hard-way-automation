@@ -6,22 +6,30 @@ echo "vm.swappiness = 1" >> /etc/sysctl.conf
 
 systemctl stop kube-apiserver kube-controller-manager kube-scheduler etcd
 
-mkdir -p /run/systemd/resolve
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
-echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-echo "search localdomain" >> /etc/resolv.conf
-ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
-
 cp ${DISTR_SHARED_FOLDER_PATH}/kube-apiserver \
   ${DISTR_SHARED_FOLDER_PATH}/kube-controller-manager \
   ${DISTR_SHARED_FOLDER_PATH}/kube-scheduler \
   ${DISTR_SHARED_FOLDER_PATH}/etcd* \
   ${DISTR_SHARED_FOLDER_PATH}/kubectl /usr/local/bin/
 
+# Copy keys and configs
+KEYS_SHARED_FOLDER_LOCAL_PATH="/k8s/keys"
+CONFIGS_SHARED_FOLDER_LOCAL_PATH="/k8s/configs"
+
+mkdir -p $KEYS_SHARED_FOLDER_LOCAL_PATH
+mkdir -p $CONFIGS_SHARED_FOLDER_LOCAL_PATH
+
+rm -Rf $KEYS_SHARED_FOLDER_LOCAL_PATH/*
+rm -Rf $CONFIGS_SHARED_FOLDER_LOCAL_PATH/*
+
+cp $KEYS_SHARED_FOLDER_PATH/* $KEYS_SHARED_FOLDER_LOCAL_PATH
+cp $CONFIGS_SHARED_FOLDER_PATH/* $CONFIGS_SHARED_FOLDER_LOCAL_PATH
+
 tar -zxvf ${DISTR_SHARED_FOLDER_PATH}/helm-v${HELM_VERSION}-linux-amd64.tar.gz
 mv linux-amd64/helm /usr/local/bin/helm
 helm version --short
 
+# Configure etcd
 mkdir -p /var/lib/etcd
 chmod 700 /var/lib/etcd
 mkdir -p /etc/kubernetes/config
@@ -35,12 +43,12 @@ Documentation=https://github.com/coreos
 Type=notify
 ExecStart=/usr/local/bin/etcd \\
   --name ${ETCD_NAME} \\
-  --cert-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \\
-  --key-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem \\
-  --peer-cert-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \\
-  --peer-key-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem \\
-  --trusted-ca-file=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
-  --peer-trusted-ca-file=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
+  --cert-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes.pem \\
+  --key-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes-key.pem \\
+  --peer-cert-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes.pem \\
+  --peer-key-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes-key.pem \\
+  --trusted-ca-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem \\
+  --peer-trusted-ca-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem \\
   --peer-client-cert-auth \\
   --client-cert-auth \\
   --initial-advertise-peer-urls https://${ETCD_IP}:2380 \\
@@ -88,9 +96,9 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --requestheader-group-headers=X-Remote-Group \\
   --requestheader-username-headers=X-Remote-User \\
   --requestheader-extra-headers-prefix=X-Remote-Extra- \\
-  --requestheader-client-ca-file=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
-  --proxy-client-cert-file=${KEYS_SHARED_FOLDER_PATH}/admin.pem \\
-  --proxy-client-key-file=${KEYS_SHARED_FOLDER_PATH}/admin-key.pem \\
+  --requestheader-client-ca-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem \\
+  --proxy-client-cert-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/admin.pem \\
+  --proxy-client-key-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/admin-key.pem \\
   --enable-aggregator-routing=true \\
   --advertise-address=${CONTROLLER_IP} \\
   --allow-privileged=true \\
@@ -101,25 +109,25 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --audit-log-path=/var/log/audit.log \\
   --authorization-mode=Node,RBAC \\
   --bind-address=0.0.0.0 \\
-  --client-ca-file=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
+  --client-ca-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem \\
   --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \\
-  --etcd-cafile=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
-  --etcd-certfile=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \\
-  --etcd-keyfile=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem \\
+  --etcd-cafile=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem \\
+  --etcd-certfile=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes.pem \\
+  --etcd-keyfile=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes-key.pem \\
   --etcd-servers=https://${ETCD_IP}:2379 \\
   --event-ttl=1h \\
   --encryption-provider-config=/etc/kubernetes/config/encryption-config.yaml \\
-  --kubelet-certificate-authority=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
-  --kubelet-client-certificate=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \\
-  --kubelet-client-key=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem \\
+  --kubelet-certificate-authority=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem \\
+  --kubelet-client-certificate=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes.pem \\
+  --kubelet-client-key=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes-key.pem \\
   --runtime-config='api/all=true' \\
-  --service-account-key-file=${KEYS_SHARED_FOLDER_PATH}/service-account.pem \\
-  --service-account-signing-key-file=${KEYS_SHARED_FOLDER_PATH}/service-account-key.pem \\
+  --service-account-key-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/service-account.pem \\
+  --service-account-signing-key-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/service-account-key.pem \\
   --service-account-issuer=https://${CONTROLLER_IP}:6443 \\
   --service-cluster-ip-range=${SERVICE_CLUSTER_IP_RANGE} \\
   --service-node-port-range=30000-32767 \\
-  --tls-cert-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \\
-  --tls-private-key-file=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem \\
+  --tls-cert-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes.pem \\
+  --tls-private-key-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes-key.pem \\
   --v=2
 Restart=on-failure
 RestartSec=${SERVICE_RESTART_INTERVAL}
@@ -140,12 +148,12 @@ ExecStart=/usr/local/bin/kube-controller-manager \\
   --cluster-cidr=${CLUSTER_CIDR} \\
   --allocate-node-cidrs=true \\
   --cluster-name=kubernetes \\
-  --cluster-signing-cert-file=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
-  --cluster-signing-key-file=${KEYS_SHARED_FOLDER_PATH}/ca-key.pem \\
-  --kubeconfig=${CONFIGS_SHARED_FOLDER_PATH}/kube-controller-manager.kubeconfig \\
+  --cluster-signing-cert-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem \\
+  --cluster-signing-key-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca-key.pem \\
+  --kubeconfig=${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/kube-controller-manager.kubeconfig \\
   --leader-elect=true \\
-  --root-ca-file=${KEYS_SHARED_FOLDER_PATH}/ca.pem \\
-  --service-account-private-key-file=${KEYS_SHARED_FOLDER_PATH}/service-account-key.pem \\
+  --root-ca-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem \\
+  --service-account-private-key-file=${KEYS_SHARED_FOLDER_LOCAL_PATH}/service-account-key.pem \\
   --service-cluster-ip-range=${SERVICE_CLUSTER_IP_RANGE} \\
   --use-service-account-credentials=true \\
   --v=2
@@ -161,7 +169,7 @@ cat <<EOF | tee /etc/kubernetes/config/kube-scheduler.yaml
 apiVersion: kubescheduler.config.k8s.io/v1
 kind: KubeSchedulerConfiguration
 clientConnection:
-  kubeconfig: "${CONFIGS_SHARED_FOLDER_PATH}/kube-scheduler.kubeconfig"
+  kubeconfig: "${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/kube-scheduler.kubeconfig"
 leaderElection:
   leaderElect: true
 EOF
@@ -191,7 +199,7 @@ systemctl enable kube-apiserver kube-controller-manager kube-scheduler etcd
 sleep $SERVICE_RESTART_INTERVAL
 
 # configure admin kubeconfig
-cat <<EOF | kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
+cat <<EOF | kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -213,7 +221,7 @@ rules:
       - "*"
 EOF
 
-cat <<EOF | kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
+cat <<EOF | kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

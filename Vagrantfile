@@ -20,7 +20,7 @@ APPLY_JIRA = addons["jira"]                                     # apply jira tas
 APPLY_NEXUS = addons["nexus"]                                   # apply nexus registry tool in nexus namespace
 APPLY_SONARQUBE = addons["sonarqube"]                           # apply sonarqube code quality tool in sonarqube namespace
 
-PROVIDER = "virtualbox"                                         # vmware_desktop, virtualbox, hyperv
+PROVIDER = resources["provider"]                                # vmware_desktop, virtualbox, hyperv
 PROVIDER_GUI = false                                            # show vms in provider gui
 VM_BOX = "generic/debian12"                                     # vm OC
 VM_BOX_VERSION = "4.3.2"                                        # vm OC box version
@@ -37,6 +37,8 @@ SMB_USER = secrets["username"]                                  # SMB user for h
 SMB_PASSWORD = secrets["password"]                              # SMB password for hyperv provider folder sync
 HYPERV_SWITCH = "k8s-net"                                       # Hyper-V switch name
 
+NFS_CPU = resources["nfs_cpu"]                                  # CPU qty for nfs
+NFS_RAM = resources["nfs_ram"]                                  # RAM size for nfs
 CONTROLLER_CPU = resources["controller_cpu"]                    # CPU qty for controller
 CONTROLLER_RAM = resources["controller_ram"]                    # RAM size for controller
 WORKER_CPU = resources["worker_cpu"]                            # CPU qty for worker
@@ -45,6 +47,7 @@ WORKER_RAM = resources["worker_ram"]                            # RAM size for w
 GATEWAY_IP = network["gateway_ip"]                              # Hyper-V gateway IP
 NET_MASK = network["net_mask"]                                  # net mask for Hyper-V
 NET_RANGE = network["net_range"]                                # net range for Hyper-V
+NFS_IP = network["nfs_ip"]                                      # nfs node
 CONTROLLER_IP = network["controller_ip"]                        # controller + etcd node
 WORKER_IPS_ARRAY = network["worker_ips"]                        # worker nodes [can be scaled]
 POD_CIDR_ARRAY = network["pod_cidrs"]                           # pod cidr array
@@ -92,6 +95,86 @@ File.write('./shared/hosts', hosts_content)
 
 Vagrant.configure(2) do |config|
 
+  # nfs deploy
+  config.vm.define "nfs" do |nfs|
+    nfs.vm.box = VM_BOX
+    nfs.vm.box_version = VM_BOX_VERSION
+    nfs.vm.hostname = "nfs"
+    nfs.vm.provider PROVIDER do |v|
+      v.memory = NFS_RAM
+      v.cpus = NFS_CPU
+      case PROVIDER
+        when "virtualbox"
+          v.name = "nfs [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
+          v.gui = PROVIDER_GUI
+        when "hyperv"
+          v.vmname = "nfs"
+          v.maxmemory = NFS_RAM + 1024
+        when "vmware_desktop"
+          v.vmx["displayname"] = "nfs [#{Time.now.strftime("%d-%m-%Y %H-%M-%S")}]"
+          v.gui = PROVIDER_GUI
+      end
+    end
+    if PROVIDER == "hyperv"
+      nfs.trigger.before :up do |up_trigger|
+        up_trigger.info = "Creating 'k8s-net' Hyper-V switch if it does not exist..."
+        up_trigger.run = {
+          privileged: "true", 
+          powershell_elevated_interactive: "true", 
+          path: "./scripts/powershell/create-nat-hyperv-switch.ps1",
+          args: [HYPERV_SWITCH, GATEWAY_IP, NET_MASK, NET_RANGE]
+        }
+      end
+      nfs.vm.synced_folder "./shared", "/shared", type: "smb", mount_options: ["username=#{SMB_USER}","password=#{SMB_PASSWORD}"], smb_password: SMB_PASSWORD, smb_username: SMB_USER
+      nfs.trigger.before :reload do |reload_trigger|
+        reload_trigger.info = "Setting Hyper-V switch to 'k8s-net' to allow for static IP..."
+        reload_trigger.run = {
+          privileged: "true", 
+          powershell_elevated_interactive: "true", 
+          path: "./scripts/powershell/set-hyperv-switch.ps1",
+          args: ["nfs", HYPERV_SWITCH]
+        }
+      end
+      nfs.vm.provision "shell", run: "once", path: "./scripts/k8s-hyperv-ip-fix.sh", privileged: true, env: {
+        "GATEWAY_IP" => GATEWAY_IP,
+        "NET_RANGE" => NET_RANGE,
+        "CURRENT_IP" => NFS_IP
+      }
+      nfs.vm.provision :reload
+    else
+      nfs.vm.network "private_network", ip: NFS_IP
+      nfs.vm.synced_folder "./shared", "/shared"
+    end
+    if DOWNLOAD_DISTRS == true
+      nfs.vm.provision "shell", run: "once", privileged: true, env: {
+          "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH
+        }, inline: <<-SHELL
+        mkdir -p $DISTR_SHARED_FOLDER_PATH/apt_packages/nfs
+        cd $DISTR_SHARED_FOLDER_PATH/apt_packages/nfs
+        apt-get download keyutils libnfsidmap1 nfs-common nfs-kernel-server rpcbind
+      SHELL
+    end
+    nfs.vm.provision "shell", run: "once", privileged: true, env: {
+        "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH
+      }, inline: <<-SHELL
+      dpkg -i $DISTR_SHARED_FOLDER_PATH/apt_packages/nfs/*.deb
+      mkdir -p \
+        /mnt/data/bitbucket \
+        /mnt/data/postgres \
+        /mnt/data/jira \
+        /mnt/data/nexus \
+        /mnt/data/sonarqube \
+        /mnt/data/teamcity
+      echo "/mnt/data/bitbucket    *(rw,async,no_subtree_check,no_root_squash)" > /etc/exports
+      echo "/mnt/data/postgres     *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
+      echo "/mnt/data/jira         *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
+      echo "/mnt/data/nexus        *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
+      echo "/mnt/data/sonarqube    *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
+      echo "/mnt/data/teamcity     *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
+      exportfs -ra
+    SHELL
+  end
+
   # k8s workers deploy
   $worker_nodes_count = WORKER_IPS_ARRAY.length()
   (1..$worker_nodes_count).each do |i|
@@ -119,17 +202,6 @@ Vagrant.configure(2) do |config|
           "username=#{SMB_USER}", 
           "password=#{SMB_PASSWORD}"
         ], smb_password: SMB_PASSWORD, smb_username: SMB_USER
-        if (i == 1) then
-          worker.trigger.before :up do |up_trigger|
-            up_trigger.info = "Creating 'k8s-net' Hyper-V switch if it does not exist..."
-            up_trigger.run = {
-              privileged: "true", 
-              powershell_elevated_interactive: "true", 
-              path: "./scripts/powershell/create-nat-hyperv-switch.ps1",
-              args: [HYPERV_SWITCH, GATEWAY_IP, NET_MASK, NET_RANGE]
-            }
-          end
-        end
         worker.trigger.before :reload do |reload_trigger|
           reload_trigger.info = "Setting Hyper-V switch to 'k8s-net' to allow for static IP..."
           reload_trigger.run = {
@@ -144,6 +216,7 @@ Vagrant.configure(2) do |config|
           "NET_RANGE" => NET_RANGE,
           "CURRENT_IP" => WORKER_IPS_ARRAY[i - 1]
         }
+        worker.vm.provision :reload
       else
         worker.vm.network "private_network", ip: WORKER_IPS_ARRAY[i - 1]
         worker.vm.synced_folder "./shared", "/shared"
@@ -170,9 +243,9 @@ Vagrant.configure(2) do |config|
           worker.vm.provision "shell", run: "once", privileged: true, env: {
               "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH
             }, inline: <<-SHELL
-            mkdir -p $DISTR_SHARED_FOLDER_PATH/apt_packages
-            cd $DISTR_SHARED_FOLDER_PATH/apt_packages
-            apt-get download socat conntrack ipset libnfnetlink0 libipset13 libnetfilter-conntrack3 iptables libip6tc2
+            mkdir -p $DISTR_SHARED_FOLDER_PATH/apt_packages/k8s
+            cd $DISTR_SHARED_FOLDER_PATH/apt_packages/k8s
+            apt-get download conntrack ipset iptables keyutils libip6tc2 libipset13 libnetfilter-conntrack3 libnfnetlink0 libnfsidmap1 nfs-common rpcbind socat
           SHELL
         end
         worker.vm.provision "shell", run: "once", path: "./scripts/k8s-cert-config-gen.sh", privileged: true, env: {
@@ -217,30 +290,18 @@ Vagrant.configure(2) do |config|
         "CONTAINERD_VERSION" => CONTAINERD_VERSION,
         "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
       }
-      if PROVIDER == "hyperv"
-        worker.vm.provision :reload
-      end
       worker.vm.provision "shell", run: "always", privileged: true, env: {
           "ROUTES" => routes_content,
+          "NFS_IP" => NFS_IP,
           "POD_CIDR" => POD_CIDR_ARRAY[i - 1],
           "NODE_IP" => WORKER_IPS_ARRAY[i - 1]
         }, inline: <<-SHELL
+        # add nfs ip
+        echo "$NFS_IP nfs" > /etc/hosts
         # add routes
         eval "$ROUTES"
         ip route del $POD_CIDR via $NODE_IP
         echo "[INFO] - worker node routes updated."
-
-        # post startup node init
-        modprobe br_netfilter
-        mkdir -p /run/systemd/resolve
-        echo "nameserver 8.8.8.8" > /etc/resolv.conf
-        echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-        echo "search localdomain" >> /etc/resolv.conf
-        ln -s /etc/resolv.conf /run/systemd/resolve/resolv.conf
-        mkdir -p /sys/fs/cgroup/systemd
-        mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
-        echo "[INFO] - worker node init done."
-
       SHELL
     end
   end
@@ -304,12 +365,6 @@ Vagrant.configure(2) do |config|
       "CLUSTER_CIDR" => CLUSTER_CIDR,
       "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
     }
-    controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
-      # update hosts file
-      cp /shared/hosts /etc/hosts
-      echo "[INFO] - /etc/hosts file updated."
-
-    SHELL
     controller.vm.provision "shell", run: "once", privileged: false, env: {
         "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
@@ -330,6 +385,11 @@ Vagrant.configure(2) do |config|
       TOKEN=$(kubectl get secret dashboard-user -n kube-system -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d)
       sed -i "s/DASHBOARD_USER_TOKEN/${TOKEN}/g" ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
     SHELL
+    controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
+      # update hosts file
+      cp /shared/hosts /etc/hosts
+      echo "[INFO] - /etc/hosts file updated."
+    SHELL
     if APPLY_INFRASTRUCTURE_COMPONENTS == true
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
@@ -346,7 +406,7 @@ Vagrant.configure(2) do |config|
         }, inline: <<-SHELL
         # uninstall infrastructure namespase and pvs
         kubectl delete namespace infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        kubectl delete pv postgres-data-pv \
+        kubectl delete pv postgres-data \
           --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - infrastructure components are in UNINSTALLED mode"
       SHELL
@@ -367,7 +427,7 @@ Vagrant.configure(2) do |config|
         }, inline: <<-SHELL
         # uninstall teamcity namespase and pvs
         kubectl delete namespace teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        kubectl delete pv teamcity-server-data-pv teamcity-server-logs-pv teamcity-server-temp-pv \
+        kubectl delete pv teamcity-data \
           --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - teamcity component is in UNINSTALLED mode"
       SHELL
@@ -388,7 +448,7 @@ Vagrant.configure(2) do |config|
         }, inline: <<-SHELL
         # uninstall bitbucket namespase and pv
         kubectl delete namespace bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        kubectl delete pv bitbucket-server-pv \
+        kubectl delete pv bitbucket-data \
           --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - bitbucket component is in UNINSTALLED mode"
       SHELL
@@ -409,7 +469,7 @@ Vagrant.configure(2) do |config|
         }, inline: <<-SHELL
         # uninstall jira namespase and pv
         kubectl delete namespace jira --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        kubectl delete pv jira-server-pv \
+        kubectl delete pv jira-data \
           --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - jira component is in UNINSTALLED mode"
       SHELL
@@ -430,7 +490,7 @@ Vagrant.configure(2) do |config|
         }, inline: <<-SHELL
         # uninstall nexus namespase and pvs
         kubectl delete namespace nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        kubectl delete pv nexus-server-data-pv nexus-server-logs-pv nexus-server-temp-pv \
+        kubectl delete pv nexus-data \
           --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - nexus component is in UNINSTALLED mode"
       SHELL
@@ -451,7 +511,7 @@ Vagrant.configure(2) do |config|
         }, inline: <<-SHELL
         # uninstall sonarqube namespase and pvs
         kubectl delete namespace sonarqube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        kubectl delete pv sonarqube-server-data-pv sonarqube-server-temp-pv sonarqube-server-logs-pv sonarqube-server-extensions-pv \
+        kubectl delete pv sonarqube-data \
           --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - sonarqube component is in UNINSTALLED mode"
       SHELL

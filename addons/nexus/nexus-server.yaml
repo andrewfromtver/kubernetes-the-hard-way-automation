@@ -1,132 +1,28 @@
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nexus-server-data-pv
-  labels:
-    app: nexus-server
-spec:
-  capacity:
-    storage: 2Gi
-  accessModes:
-    - ReadWriteMany
-  storageClassName: nexus-server-data
-  hostPath:
-    path: /mnt/data/nexus-server-data
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: nexus-server-data
-  namespace: nexus
-spec:
-  storageClassName: nexus-server-data
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 2Gi
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nexus-server-logs-pv
-  labels:
-    app: nexus-server
-spec:
-  capacity:
-    storage: 2Gi
-  accessModes:
-    - ReadWriteMany
-  storageClassName: nexus-server-logs
-  hostPath:
-    path: /mnt/data/nexus-server-logs
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: nexus-server-logs
-  namespace: nexus
-spec:
-  storageClassName: nexus-server-logs
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 2Gi
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nexus-server-temp-pv
-  labels:
-    app: nexus-server
-spec:
-  capacity:
-    storage: 2Gi
-  accessModes:
-    - ReadWriteMany
-  storageClassName: nexus-server-temp
-  hostPath:
-    path: /mnt/data/nexus-server-temp
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: nexus-server-temp
-  namespace: nexus
-spec:
-  storageClassName: nexus-server-temp
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 2Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: nexus-server
-  namespace: nexus
-spec:
-  type: NodePort
-  selector:
-    app: nexus-server
-  ports:
-    - name: http
-      protocol: TCP
-      port: 8081
-      targetPort: 8081
-      nodePort: 30004
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: nexus-server
-  name: nexus-server
+    app: nexus
+  name: nexus
   namespace: nexus
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: nexus-server
+      app: nexus
   template:
     metadata:
       labels:
-        app: nexus-server
+        app: nexus
     spec:
       hostname: nexus
       initContainers:
         - name: set-permissions
           image: alpine:3
-          command: ["sh", "-c", "chown -R 200:200 /nexus-data; chown -R 200:200 /opt/sonatype/sonatype-work/nexus3"]
+          command: ["sh", "-c", "chown -R 200:200 /nexus-data"]
           volumeMounts:
-            - name: nexus-server-data
+            - name: nexus-data
               mountPath: /nexus-data
-            - name: nexus-server-logs
-              mountPath: /opt/sonatype/sonatype-work/nexus3/log
-            - name: nexus-server-temp
-              mountPath: /opt/sonatype/sonatype-work/nexus3/tmp
       containers:
         - name: nexus
           image: sonatype/nexus3:3.67.1-java11
@@ -138,12 +34,8 @@ spec:
               cpu: 4
               memory: 4Gi
           volumeMounts:
-            - name: nexus-server-data
+            - name: nexus-data
               mountPath: /nexus-data
-            - name: nexus-server-logs
-              mountPath: /opt/sonatype/sonatype-work/nexus3/log
-            - name: nexus-server-temp
-              mountPath: /opt/sonatype/sonatype-work/nexus3/tmp
           ports:
             - containerPort: 8081
               name: http
@@ -168,16 +60,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 15
-          env:
-            - name: INSTALL4J_ADD_VM_PARAMS
-              value: "-Xms2703m -Xmx2703m -XX:MaxDirectMemorySize=2703m -Djava.util.prefs.userRoot=/opt/sonatype/sonatype-work/nexus3/javaprefs"
       volumes:
-        - name: nexus-server-data
+        - name: nexus-data
           persistentVolumeClaim:
-            claimName: nexus-server-data
-        - name: nexus-server-logs
-          persistentVolumeClaim:
-            claimName: nexus-server-logs
-        - name: nexus-server-temp
-          persistentVolumeClaim:
-            claimName: nexus-server-temp
+            claimName: nexus-data

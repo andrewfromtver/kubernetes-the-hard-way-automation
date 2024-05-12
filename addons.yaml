@@ -1,6 +1,6 @@
 infrastructure: true
-teamcity: true
 bitbucket: true
 jira: true
 nexus: true
 sonarqube: true
+teamcity: true
