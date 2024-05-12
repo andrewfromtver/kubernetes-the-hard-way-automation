@@ -47,6 +47,8 @@ WORKER_RAM = resources["worker_ram"]                            # RAM size for w
 GATEWAY_IP = network["gateway_ip"]                              # Hyper-V gateway IP
 NET_MASK = network["net_mask"]                                  # net mask for Hyper-V
 NET_RANGE = network["net_range"]                                # net range for Hyper-V
+DNS_IP_1 = network["dns_ip_1"]                                  # main worker node DNS ip
+DNS_IP_2 = network["dns_ip_2"]                                  # second worker node DNS ip
 NFS_IP = network["nfs_ip"]                                      # nfs node
 CONTROLLER_IP = network["controller_ip"]                        # controller + etcd node
 WORKER_IPS_ARRAY = network["worker_ips"]                        # worker nodes [can be scaled]
@@ -276,6 +278,8 @@ Vagrant.configure(2) do |config|
         "GATEWAY_IP" => GATEWAY_IP,
         "CONTROLLER_IP" => CONTROLLER_IP,
         "INTERNAL_IP" => WORKER_IPS_ARRAY[i - 1],
+        "DNS_IP_1" => DNS_IP_1,
+        "DNS_IP_2" => DNS_IP_2,
         "DISTR_SHARED_FOLDER_PATH" => DISTR_SHARED_FOLDER_PATH,
         "NODE_IP" => WORKER_IPS_ARRAY[i - 1],
         "POD_CIDR" => POD_CIDR_ARRAY[i - 1],

@@ -1,4 +1,4 @@
-provider: virtualbox
+provider: hyperv
 nfs_cpu: 1
 nfs_ram: 500
 controller_cpu: 1

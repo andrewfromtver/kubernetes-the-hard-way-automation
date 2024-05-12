@@ -131,9 +131,9 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
       - args:
-        - --kubelet-certificate-authority=/shared/k8s_keys/ca.pem
-        - --tls-cert-file=/shared/k8s_keys/admin.pem
-        - --tls-private-key-file=/shared/k8s_keys/admin-key.pem
+        - --kubelet-certificate-authority=/k8s/keys/ca.pem
+        - --tls-cert-file=/k8s/keys/admin.pem
+        - --tls-private-key-file=/k8s/keys/admin-key.pem
         - --secure-port=8443
         - --kubelet-preferred-address-types=InternalIP
         - --kubelet-use-node-status-port
@@ -174,7 +174,7 @@ spec:
           runAsUser: 1000
         volumeMounts:
         - name: k8s-keys
-          mountPath: "/shared/k8s_keys"
+          mountPath: "/k8s/keys"
       nodeSelector:
         kubernetes.io/os: linux
       priorityClassName: system-cluster-critical
@@ -182,7 +182,7 @@ spec:
       volumes:
         - name: k8s-keys
           hostPath:
-            path: "/shared/k8s_keys"
+            path: "/k8s/keys"
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService

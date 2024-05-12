@@ -82,6 +82,12 @@ echo "vm.swappiness = 1" >> /etc/sysctl.conf
 echo "vm.max_map_count = 262144" >> /etc/sysctl.conf
 sysctl -p
 
+echo "nameserver ${DNS_IP_1}" > /etc/resolvconf/resolv.conf.d/head
+echo "nameserver ${DNS_IP_2}" >> /etc/resolvconf/resolv.conf.d/head
+
+resolvconf --enable-updates
+resolvconf -u
+
 systemctl stop containerd kubelet kube-proxy mount-systemd-cgroup
 
 cat <<EOF | tee /etc/systemd/system/mount-systemd-cgroup.service
