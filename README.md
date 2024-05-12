@@ -23,7 +23,7 @@ To manage the cluster, update the YAML files:
 
 * `cert.yaml` to set cluster certs options
 * `network.yaml` to set nodes qty and IP and other network options
-* `resources.yaml` to set controller/worker node CPU and RAM
+* `resources.yaml` to set controller/worker/nfs node CPU and RAM
 
 # Deployed apps management
 
