@@ -303,8 +303,25 @@ Vagrant.configure(2) do |config|
         # add nfs ip
         echo "$NFS_IP nfs" > /etc/hosts
         # add routes
-        eval "$ROUTES"
-        ip route del $POD_CIDR via $NODE_IP
+        echo "$ROUTES" > /routes
+        echo "ip route del $POD_CIDR via $NODE_IP" >> /routes
+        chmod +x /routes
+        #
+        cat <<EOF | tee /etc/systemd/system/k8s-routes.service
+[Unit]
+Description=Setup k8s static routes
+
+[Service]
+Type=idle
+ExecStart=bash -c /routes
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        systemctl daemon-reload
+        systemctl start k8s-routes
+        systemctl enable k8s-routes
         echo "[INFO] - worker node routes updated."
       SHELL
     end
