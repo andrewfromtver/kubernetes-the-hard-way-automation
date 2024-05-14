@@ -19,7 +19,7 @@ spec:
       initContainers:
         - name: set-permissions
           image: alpine:3
-          command: ["sh", "-c", "chown -R 1001:1001 /var/atlassian/application-data/jira"]
+          command: ["sh", "-c", "chown -R 2001:2001 /var/atlassian/application-data/jira"]
           volumeMounts:
             - name: jira-data
               mountPath: /var/atlassian/application-data/jira
