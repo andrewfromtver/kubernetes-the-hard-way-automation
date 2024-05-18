@@ -28,8 +28,8 @@ spec:
           image: sonarqube:lts-community
           resources:
             requests:
-              cpu: 1
-              memory: 1Gi
+              cpu: 500m
+              memory: 500Mi
             limits:
               cpu: 4
               memory: 4Gi
@@ -66,7 +66,10 @@ spec:
             - name: SONAR_JDBC_USERNAME
               value: postgres
             - name: SONAR_JDBC_PASSWORD
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
       volumes:
         - name: sonarqube-data
           persistentVolumeClaim:

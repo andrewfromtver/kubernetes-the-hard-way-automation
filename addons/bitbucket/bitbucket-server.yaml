@@ -28,8 +28,8 @@ spec:
           image: atlassian/bitbucket:8.19-jdk17
           resources:
             requests:
-              cpu: 1
-              memory: 1Gi
+              cpu: 500m
+              memory: 500Mi
             limits:
               cpu: 4
               memory: 4Gi
@@ -63,6 +63,22 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 15
+          env:
+            - name: SEARCH_ENABLED
+              value: "false"
+            - name: PLUGIN_SEARCH_CONFIG_BASEURL
+              value: http://opensearch.infrastructure:9200
+            - name: JDBC_DRIVER
+              value: org.postgresql.Driver
+            - name: JDBC_URL
+              value: jdbc:postgresql://postgres.infrastructure:5432/bitbucket
+            - name: JDBC_USER
+              value: postgres
+            - name: JDBC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
       volumes:
         - name: bitbucket-data
           persistentVolumeClaim:

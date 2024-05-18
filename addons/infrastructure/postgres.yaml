@@ -68,8 +68,8 @@ spec:
               cpu: 500m
               memory: 500Mi
             limits:
-              cpu: 2
-              memory: 2Gi
+              cpu: 1
+              memory: 1Gi
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
@@ -82,13 +82,13 @@ spec:
           livenessProbe:
             exec:
               command: ["pg_isready", "-U", "postgres", "-d", "postgres", "-h", "localhost"]
-            initialDelaySeconds: 60
+            initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "postgres", "-d", "postgres", "-h", "localhost"]
-            initialDelaySeconds: 120
+            initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
           env:
@@ -97,7 +97,10 @@ spec:
             - name: POSTGRES_USER
               value: postgres
             - name: POSTGRES_PASSWORD
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
       volumes:
         - name: postgres-data
           persistentVolumeClaim:

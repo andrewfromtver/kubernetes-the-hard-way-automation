@@ -236,3 +236,6 @@ subjects:
     kind: User
     name: kubernetes
 EOF
+
+# copy manifests
+cp -r /addons /manifests

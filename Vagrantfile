@@ -36,6 +36,7 @@ HELM_VERSION = "3.14.4"                                         # HELM version
 SMB_USER = secrets["username"]                                  # SMB user for hyperv provider folder sync
 SMB_PASSWORD = secrets["password"]                              # SMB password for hyperv provider folder sync
 HYPERV_SWITCH = "k8s-net"                                       # Hyper-V switch name
+POSTGRES_PASSWORD = secrets["postgres_password"]                # postgres password
 
 NFS_CPU = resources["nfs_cpu"]                                  # CPU qty for nfs
 NFS_RAM = resources["nfs_ram"]                                  # RAM size for nfs
@@ -292,38 +293,10 @@ Vagrant.configure(2) do |config|
         "RUNC_VERSION" => RUNC_VERSION,
         "CNI_VERSION" => CNI_VERSION,
         "CONTAINERD_VERSION" => CONTAINERD_VERSION,
-        "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
+        "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL,
+        "ROUTES" => routes_content,
+        "NFS_IP" => NFS_IP
       }
-      worker.vm.provision "shell", run: "always", privileged: true, env: {
-          "ROUTES" => routes_content,
-          "NFS_IP" => NFS_IP,
-          "POD_CIDR" => POD_CIDR_ARRAY[i - 1],
-          "NODE_IP" => WORKER_IPS_ARRAY[i - 1]
-        }, inline: <<-SHELL
-        # add nfs ip
-        echo "$NFS_IP nfs" > /etc/hosts
-        # add routes
-        echo "$ROUTES" > /routes
-        echo "ip route del $POD_CIDR via $NODE_IP" >> /routes
-        chmod +x /routes
-        #
-        cat <<EOF | tee /etc/systemd/system/k8s-routes.service
-[Unit]
-Description=Setup k8s static routes
-
-[Service]
-Type=idle
-ExecStart=bash -c /routes
-User=root
-
-[Install]
-WantedBy=multi-user.target
-EOF
-        systemctl daemon-reload
-        systemctl start k8s-routes
-        systemctl enable k8s-routes
-        echo "[INFO] - worker node routes updated."
-      SHELL
     end
   end
 
@@ -413,127 +386,151 @@ EOF
     SHELL
     if APPLY_INFRASTRUCTURE_COMPONENTS == true
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        "CONFIGS_FOLDER_PATH" => "/k8s/configs",
+        "POSTGRES_PASSWORD" => POSTGRES_PASSWORD
         }, inline: <<-SHELL
-        # install infrastructure components
-        kubectl create namespace infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
-          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
-        kubectl apply -f /addons/infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        # create infrastructure namespace
+        kubectl create namespace infrastructure --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -  
+        # create secret for postgres
+        kubectl create secret generic postgres-secret --from-literal=POSTGRES_PASSWORD=${POSTGRES_PASSWORD} -n infrastructure \
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
+        # install opensearch postgres and hazelcast infrastructure components
+        kubectl apply -f /manifests/infrastructure --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - infrastructure components are in INSTALLED mode"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall infrastructure namespase and pvs
-        kubectl delete namespace infrastructure --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        # uninstall infrastructure namespase and pv
+        kubectl delete namespace infrastructure --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv postgres-data \
-          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - infrastructure components are in UNINSTALLED mode"
       SHELL
     end
     if APPLY_TEAMCITY == true
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
         # install teamcity
-        kubectl create namespace teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
-          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
-        kubectl apply -f /addons/teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl create namespace teamcity --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
+        kubectl apply -f /manifests/teamcity --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - teamcity component is in INSTALLED mode"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall teamcity namespase and pvs
-        kubectl delete namespace teamcity --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        # uninstall teamcity namespase and pv
+        kubectl delete namespace teamcity --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv teamcity-data \
-          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - teamcity component is in UNINSTALLED mode"
       SHELL
     end
     if APPLY_BITBUCKET == true
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+          "CONFIGS_FOLDER_PATH" => "/k8s/configs",
+          "POSTGRES_PASSWORD" => POSTGRES_PASSWORD
         }, inline: <<-SHELL
+        # create bitbucket namespace
+        kubectl create namespace bitbucket --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
+        # create secret for postgres
+        kubectl create secret generic postgres-secret --from-literal=POSTGRES_PASSWORD=${POSTGRES_PASSWORD} -n bitbucket \
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install bitbucket
-        kubectl create namespace bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
-          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
-        kubectl apply -f /addons/bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl apply -f /manifests/bitbucket --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - bitbucket component is in INSTALLED mode"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
         # uninstall bitbucket namespase and pv
-        kubectl delete namespace bitbucket --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        kubectl delete namespace bitbucket --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv bitbucket-data \
-          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - bitbucket component is in UNINSTALLED mode"
       SHELL
     end
     if APPLY_JIRA == true
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+          "CONFIGS_FOLDER_PATH" => "/k8s/configs",
+          "POSTGRES_PASSWORD" => POSTGRES_PASSWORD
         }, inline: <<-SHELL
+        # create jira namespace
+        kubectl create namespace jira --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
+        # create secret for postgres
+        kubectl create secret generic postgres-secret --from-literal=POSTGRES_PASSWORD=${POSTGRES_PASSWORD} -n jira \
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install jira
-        kubectl create namespace jira --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
-          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
-        kubectl apply -f /addons/jira --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl apply -f /manifests/jira --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - jira component is in INSTALLED mode"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
         # uninstall jira namespase and pv
-        kubectl delete namespace jira --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        kubectl delete namespace jira --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv jira-data \
-          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - jira component is in UNINSTALLED mode"
       SHELL
     end
     if APPLY_NEXUS == true
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+          "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
         # install nexus
-        kubectl create namespace nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
-          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
-        kubectl apply -f /addons/nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl create namespace nexus --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
+        kubectl apply -f /manifests/nexus --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - nexus component is in INSTALLED mode"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall nexus namespase and pvs
-        kubectl delete namespace nexus --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        # uninstall nexus namespase and pv
+        kubectl delete namespace nexus --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv nexus-data \
-          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - nexus component is in UNINSTALLED mode"
       SHELL
     end
     if APPLY_SONARQUBE == true
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-          "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+          "CONFIGS_FOLDER_PATH" => "/k8s/configs",
+          "POSTGRES_PASSWORD" => POSTGRES_PASSWORD
         }, inline: <<-SHELL
+        # create sonarqube namespace
+        kubectl create namespace sonarqube --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
+        # create secret for postgres
+        kubectl create secret generic postgres-secret --from-literal=POSTGRES_PASSWORD=${POSTGRES_PASSWORD} -n sonarqube \
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
+          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install sonarqube
-        kubectl create namespace sonarqube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
-          kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig -f -
-        kubectl apply -f /addons/sonarqube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+        kubectl apply -f /manifests/sonarqube --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - sonarqube component is in INSTALLED mode"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH
+        "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall sonarqube namespase and pvs
-        kubectl delete namespace sonarqube --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+        # uninstall sonarqube namespase and pv
+        kubectl delete namespace sonarqube --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv sonarqube-data \
-          --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
+          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         echo "[INFO] - sonarqube component is in UNINSTALLED mode"
       SHELL
     end

@@ -28,8 +28,8 @@ spec:
           image: jetbrains/teamcity-server:2024.03.1
           resources:
             requests:
-              cpu: 1
-              memory: 1Gi
+              cpu: 500m
+              memory: 500Mi
             limits:
               cpu: 4
               memory: 4Gi

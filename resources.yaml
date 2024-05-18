@@ -1,7 +1,7 @@
-provider: hyperv
+provider: virtualbox
 nfs_cpu: 1
-nfs_ram: 500
+nfs_ram: 1000
 controller_cpu: 1
-controller_ram: 1500
+controller_ram: 1000
 worker_cpu: 8
 worker_ram: 8000

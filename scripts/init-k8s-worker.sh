@@ -88,7 +88,7 @@ echo "nameserver ${DNS_IP_2}" >> /etc/resolvconf/resolv.conf.d/head
 resolvconf --enable-updates
 resolvconf -u
 
-systemctl stop containerd kubelet kube-proxy mount-systemd-cgroup
+systemctl stop containerd kubelet kube-proxy mount-systemd-cgroup k8s-routes
 
 cat <<EOF | tee /etc/systemd/system/mount-systemd-cgroup.service
 [Unit]
@@ -278,7 +278,28 @@ RestartSec=${SERVICE_RESTART_INTERVAL}
 WantedBy=multi-user.target
 EOF
 
+# add nfs ip
+echo "$NFS_IP nfs" > /etc/hosts
+
+# add routes
+echo "$ROUTES" > /routes
+echo "ip route del $POD_CIDR via $NODE_IP" >> /routes
+chmod +x /routes
+
+cat <<EOF | tee /etc/systemd/system/k8s-routes.service
+[Unit]
+Description=Setup k8s static routes
+
+[Service]
+Type=idle
+ExecStart=bash -c /routes
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 # start node services
 systemctl daemon-reload
-systemctl start containerd kubelet kube-proxy mount-systemd-cgroup
-systemctl enable containerd kubelet kube-proxy mount-systemd-cgroup
+systemctl start containerd kubelet kube-proxy mount-systemd-cgroup k8s-routes
+systemctl enable containerd kubelet kube-proxy mount-systemd-cgroup k8s-routes

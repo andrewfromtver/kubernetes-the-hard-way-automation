@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch
+  namespace: infrastructure
+spec:
+  clusterIP: None
+  ports:
+    - port: 9300
+      name: transport
+    - port: 9200
+      name: http
+  selector:
+    app: opensearch
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: opensearch
+  labels:
+    app: opensearch
+  namespace: infrastructure
+spec:
+  serviceName: opensearch
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opensearch
+  template:
+    metadata:
+      labels:
+        app: opensearch
+    spec:
+      containers:
+      - name: opensearch
+        image: opensearchproject/opensearch:2.14.0
+        resources:
+          requests:
+            cpu: 500m
+            memory: 500Mi
+          limits:
+            cpu: 1
+            memory: 1Gi
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+        env:
+        - name: cluster.name
+          value: opensearch-cluster
+        - name: node.name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: discovery.seed_hosts
+          value: "opensearch-0.opensearch.infrastructure.svc.cluster.local"
+        - name: cluster.initial_master_nodes
+          value: "opensearch-0"
+        - name: "OPENSEARCH_JAVA_OPTS"
+          value: "-Xms512m -Xmx512m"
+        - name: DISABLE_SECURITY_PLUGIN
+          value: "true"
