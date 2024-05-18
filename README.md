@@ -16,6 +16,7 @@ This project is inspired by Kelsey Hightower's repository - kubernetes-the-hard-
 * `password: "smb_password"`        # for Hyper-V deployment
 * `k8s_encrypt_key: "strong_key"`   # 16 24 or 32 chars key
 * `etcd_token: "strong_token"`
+* `postgres_password: "strong_password"`
 
 # Cluster management
 
