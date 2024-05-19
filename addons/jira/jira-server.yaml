@@ -19,7 +19,11 @@ spec:
       initContainers:
         - name: set-permissions
           image: alpine:3
-          command: ["sh", "-c", "chown -R 2001:2001 /var/atlassian/application-data/jira"]
+          command: [
+            "sh", 
+            "-c", 
+            "chown -R 2001:2001 /var/atlassian/application-data/jira"
+          ]
           volumeMounts:
             - name: jira-data
               mountPath: /var/atlassian/application-data/jira
@@ -60,18 +64,6 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 15
-          env:
-            - name: JDBC_DRIVER
-              value: org.postgresql.Driver
-            - name: JDBC_URL
-              value: jdbc:postgresql://postgres.infrastructure:5432/bitbucket
-            - name: JDBC_USER
-              value: postgres
-            - name: JDBC_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
       volumes:
         - name: jira-data
           persistentVolumeClaim:

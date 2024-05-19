@@ -238,4 +238,6 @@ subjects:
 EOF
 
 # copy manifests
-cp -r /addons /manifests
+mkdir -p /manifests
+rm -Rf /manifests/*
+cp -r /addons/* /manifests

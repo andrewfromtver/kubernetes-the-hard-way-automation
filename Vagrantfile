@@ -404,7 +404,7 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall infrastructure namespase and pv
+        # delete infrastructure namespase and pv
         kubectl delete namespace infrastructure --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv postgres-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
@@ -415,9 +415,10 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # install teamcity
+        # create teamcity namespace
         kubectl create namespace teamcity --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
           kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
+        # install teamcity
         kubectl apply -f /manifests/teamcity --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - teamcity component is in INSTALLED mode"
       SHELL
@@ -425,7 +426,7 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall teamcity namespase and pv
+        # delete teamcity namespase and pv
         kubectl delete namespace teamcity --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv teamcity-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
@@ -452,7 +453,7 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall bitbucket namespase and pv
+        # delete bitbucket namespase and pv
         kubectl delete namespace bitbucket --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv bitbucket-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
@@ -467,10 +468,6 @@ Vagrant.configure(2) do |config|
         # create jira namespace
         kubectl create namespace jira --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
           kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
-        # create secret for postgres
-        kubectl create secret generic postgres-secret --from-literal=POSTGRES_PASSWORD=${POSTGRES_PASSWORD} -n jira \
-          --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
-          kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install jira
         kubectl apply -f /manifests/jira --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - jira component is in INSTALLED mode"
@@ -479,7 +476,7 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall jira namespase and pv
+        # delete jira namespase and pv
         kubectl delete namespace jira --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv jira-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
@@ -490,9 +487,10 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
           "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # install nexus
+        # create nexus namespace
         kubectl create namespace nexus --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --dry-run=client -o yaml | \
           kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
+        # install nexus
         kubectl apply -f /manifests/nexus --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
         echo "[INFO] - nexus component is in INSTALLED mode"
       SHELL
@@ -500,7 +498,7 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall nexus namespase and pv
+        # delete nexus namespase and pv
         kubectl delete namespace nexus --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv nexus-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
@@ -527,7 +525,7 @@ Vagrant.configure(2) do |config|
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_FOLDER_PATH" => "/k8s/configs"
         }, inline: <<-SHELL
-        # uninstall sonarqube namespase and pv
+        # delete sonarqube namespase and pv
         kubectl delete namespace sonarqube --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv sonarqube-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
