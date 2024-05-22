@@ -168,12 +168,12 @@ Vagrant.configure(2) do |config|
         /mnt/data/nexus \
         /mnt/data/sonarqube \
         /mnt/data/teamcity
-      echo "/mnt/data/bitbucket    *(rw,async,no_subtree_check,no_root_squash)" > /etc/exports
-      echo "/mnt/data/postgres     *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
-      echo "/mnt/data/jira         *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
-      echo "/mnt/data/nexus        *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
-      echo "/mnt/data/sonarqube    *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
-      echo "/mnt/data/teamcity     *(rw,async,no_subtree_check,no_root_squash)" >> /etc/exports
+      echo "/mnt/data/bitbucket    *(rw,sync,no_subtree_check,insecure,no_root_squash)" > /etc/exports
+      echo "/mnt/data/postgres     *(rw,sync,no_subtree_check,insecure,no_root_squash)" >> /etc/exports
+      echo "/mnt/data/jira         *(rw,sync,no_subtree_check,insecure,no_root_squash)" >> /etc/exports
+      echo "/mnt/data/nexus        *(rw,sync,no_subtree_check,insecure,no_root_squash)" >> /etc/exports
+      echo "/mnt/data/sonarqube    *(rw,sync,no_subtree_check,insecure,no_root_squash)" >> /etc/exports
+      echo "/mnt/data/teamcity     *(rw,sync,no_subtree_check,insecure,no_root_squash)" >> /etc/exports
       exportfs -ra
     SHELL
   end
@@ -359,31 +359,6 @@ Vagrant.configure(2) do |config|
       "CLUSTER_CIDR" => CLUSTER_CIDR,
       "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
     }
-    controller.vm.provision "shell", run: "once", privileged: false, env: {
-        "KEYS_SHARED_FOLDER_PATH" => KEYS_SHARED_FOLDER_PATH,
-        "CONFIGS_SHARED_FOLDER_PATH" => CONFIGS_SHARED_FOLDER_PATH,
-        "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
-      }, inline: <<-SHELL
-      # test etcd cluster
-      sleep $SERVICE_RESTART_INTERVAL
-      ETCDCTL_API=3 etcdctl member list \
-        --endpoints=https://127.0.0.1:2379 \
-        --cacert=${KEYS_SHARED_FOLDER_PATH}/ca.pem \
-        --cert=${KEYS_SHARED_FOLDER_PATH}/kubernetes.pem \
-        --key=${KEYS_SHARED_FOLDER_PATH}/kubernetes-key.pem
-      # test local healthz
-      curl https://127.0.0.1:6443/healthz --cacert ${KEYS_SHARED_FOLDER_PATH}/ca.pem -s
-      # create addons
-      kubectl create -f /addons/kube-system --kubeconfig ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
-      sleep $SERVICE_RESTART_INTERVAL
-      TOKEN=$(kubectl get secret dashboard-user -n kube-system -o jsonpath={".data.token"} --kubeconfig /shared/k8s_configs/admin.kubeconfig | base64 -d)
-      sed -i "s/DASHBOARD_USER_TOKEN/${TOKEN}/g" ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
-    SHELL
-    controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
-      # update hosts file
-      cp /shared/hosts /etc/hosts
-      echo "[INFO] - /etc/hosts file updated."
-    SHELL
     if APPLY_INFRASTRUCTURE_COMPONENTS == true
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_FOLDER_PATH" => "/k8s/configs",
@@ -398,7 +373,7 @@ Vagrant.configure(2) do |config|
           kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install opensearch postgres and hazelcast infrastructure components
         kubectl apply -f /manifests/infrastructure --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
-        echo "[INFO] - infrastructure components are in INSTALLED mode"
+        echo "\n[INFO] - infrastructure components are in INSTALLED mode.\n"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
@@ -408,7 +383,7 @@ Vagrant.configure(2) do |config|
         kubectl delete namespace infrastructure --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv postgres-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        echo "[INFO] - infrastructure components are in UNINSTALLED mode"
+        echo "\n[INFO] - infrastructure components are in UNINSTALLED mode.\n"
       SHELL
     end
     if APPLY_TEAMCITY == true
@@ -420,7 +395,7 @@ Vagrant.configure(2) do |config|
           kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install teamcity
         kubectl apply -f /manifests/teamcity --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
-        echo "[INFO] - teamcity component is in INSTALLED mode"
+        echo "\n[INFO] - teamcity component is in INSTALLED mode.\n"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
@@ -430,7 +405,7 @@ Vagrant.configure(2) do |config|
         kubectl delete namespace teamcity --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv teamcity-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        echo "[INFO] - teamcity component is in UNINSTALLED mode"
+        echo "\n[INFO] - teamcity component is in UNINSTALLED mode.\n"
       SHELL
     end
     if APPLY_BITBUCKET == true
@@ -447,7 +422,7 @@ Vagrant.configure(2) do |config|
           kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install bitbucket
         kubectl apply -f /manifests/bitbucket --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
-        echo "[INFO] - bitbucket component is in INSTALLED mode"
+        echo "\n[INFO] - bitbucket component is in INSTALLED mode.\n"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
@@ -457,7 +432,7 @@ Vagrant.configure(2) do |config|
         kubectl delete namespace bitbucket --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv bitbucket-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        echo "[INFO] - bitbucket component is in UNINSTALLED mode"
+        echo "\n[INFO] - bitbucket component is in UNINSTALLED mode.\n"
       SHELL
     end
     if APPLY_JIRA == true
@@ -470,7 +445,7 @@ Vagrant.configure(2) do |config|
           kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install jira
         kubectl apply -f /manifests/jira --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
-        echo "[INFO] - jira component is in INSTALLED mode"
+        echo "\n[INFO] - jira component is in INSTALLED mode.\n"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
@@ -480,7 +455,7 @@ Vagrant.configure(2) do |config|
         kubectl delete namespace jira --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv jira-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        echo "[INFO] - jira component is in UNINSTALLED mode"
+        echo "\n[INFO] - jira component is in UNINSTALLED mode.\n"
       SHELL
     end
     if APPLY_NEXUS == true
@@ -492,7 +467,7 @@ Vagrant.configure(2) do |config|
           kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install nexus
         kubectl apply -f /manifests/nexus --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
-        echo "[INFO] - nexus component is in INSTALLED mode"
+        echo "\n[INFO] - nexus component is in INSTALLED mode.\n"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
@@ -502,7 +477,7 @@ Vagrant.configure(2) do |config|
         kubectl delete namespace nexus --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv nexus-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        echo "[INFO] - nexus component is in UNINSTALLED mode"
+        echo "\n[INFO] - nexus component is in UNINSTALLED mode.\n"
       SHELL
     end
     if APPLY_SONARQUBE == true
@@ -519,7 +494,7 @@ Vagrant.configure(2) do |config|
           kubectl apply --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig -f -
         # install sonarqube
         kubectl apply -f /manifests/sonarqube --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig
-        echo "[INFO] - sonarqube component is in INSTALLED mode"
+        echo "\n[INFO] - sonarqube component is in INSTALLED mode.\n"
       SHELL
     else
       controller.vm.provision "shell", run: "always", privileged: false, env: {
@@ -529,7 +504,7 @@ Vagrant.configure(2) do |config|
         kubectl delete namespace sonarqube --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
         kubectl delete pv sonarqube-data \
           --kubeconfig ${CONFIGS_FOLDER_PATH}/admin.kubeconfig --ignore-not-found
-        echo "[INFO] - sonarqube component is in UNINSTALLED mode"
+        echo "\n[INFO] - sonarqube component is in UNINSTALLED mode.\n"
       SHELL
     end
   end

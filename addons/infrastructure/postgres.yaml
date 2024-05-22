@@ -68,8 +68,8 @@ spec:
               cpu: 500m
               memory: 500Mi
             limits:
-              cpu: 1
-              memory: 1Gi
+              cpu: 4
+              memory: 4Gi
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
@@ -81,14 +81,14 @@ spec:
               protocol: TCP
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres", "-d", "postgres", "-h", "localhost"]
-            initialDelaySeconds: 15
+              command: ["pg_isready", "-U", "postgres", "-d", "sonarqube", "-h", "localhost"]
+            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres", "-d", "postgres", "-h", "localhost"]
-            initialDelaySeconds: 30
+              command: ["pg_isready", "-U", "postgres", "-d", "sonarqube", "-h", "localhost"]
+            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
           env:

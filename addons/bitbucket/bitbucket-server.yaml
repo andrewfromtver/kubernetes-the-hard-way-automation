@@ -26,6 +26,9 @@ spec:
       containers:
         - name: bitbucket
           image: atlassian/bitbucket:8.19-jdk17
+          securityContext:
+            runAsUser: 2003
+            allowPrivilegeEscalation: false
           resources:
             requests:
               cpu: 500m
@@ -49,7 +52,7 @@ spec:
               path: /
               port: http
               scheme: HTTP
-            initialDelaySeconds: 120
+            initialDelaySeconds: 60
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 15

@@ -195,8 +195,8 @@ systemctl daemon-reload
 systemctl start kube-apiserver kube-controller-manager kube-scheduler etcd
 systemctl enable kube-apiserver kube-controller-manager kube-scheduler etcd
 
-# postinit delay
-sleep $SERVICE_RESTART_INTERVAL
+# post init delay
+sleep $(( SERVICE_RESTART_INTERVAL * 3 ))
 
 # configure admin kubeconfig
 cat <<EOF | kubectl apply --kubeconfig ${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/admin.kubeconfig -f -
@@ -241,3 +241,29 @@ EOF
 mkdir -p /manifests
 rm -Rf /manifests/*
 cp -r /addons/* /manifests
+
+# update hosts file
+cp /shared/hosts /etc/hosts
+
+# test etcd cluster
+ETCDCTL_API=3 etcdctl member list \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem \
+  --cert=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes.pem \
+  --key=${KEYS_SHARED_FOLDER_LOCAL_PATH}/kubernetes-key.pem
+
+# test local healthz
+curl https://127.0.0.1:6443/healthz --cacert ${KEYS_SHARED_FOLDER_LOCAL_PATH}/ca.pem -s
+echo "\n[INFO] - controller node initialized."
+
+# apply kube-system manifests
+kubectl create -f /addons/kube-system --kubeconfig ${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/admin.kubeconfig
+
+# delay
+sleep $(( SERVICE_RESTART_INTERVAL * 3 ))
+
+# get kubernetes dashboard access token
+TOKEN=$(kubectl get secret dashboard-user -n kube-system -o jsonpath={".data.token"} --kubeconfig ${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/admin.kubeconfig | base64 -d)
+sed -i "s/DASHBOARD_USER_TOKEN/${TOKEN}/g" ${CONFIGS_SHARED_FOLDER_PATH}/admin.kubeconfig
+sed -i "s/DASHBOARD_USER_TOKEN/${TOKEN}/g" ${CONFIGS_SHARED_FOLDER_LOCAL_PATH}/admin.kubeconfig
+echo "[INFO] - cluster ready."
