@@ -359,6 +359,17 @@ Vagrant.configure(2) do |config|
       "CLUSTER_CIDR" => CLUSTER_CIDR,
       "SERVICE_RESTART_INTERVAL" => SERVICE_RESTART_INTERVAL
     }
+    controller.vm.provision "shell", run: "always", privileged: true, inline: <<-SHELL
+      # copy manifests
+      if [ -d /addons/kube-system ]; then
+        mkdir -p /manifests
+        rm -Rf /manifests/*
+        cp -r /addons/* /manifests
+        echo "\n[INFO] - manifests updated.\n"
+      else
+        echo "\n[INFO] - manifests not updated, addons folder is empty.\n"
+      fi
+    SHELL
     if APPLY_INFRASTRUCTURE_COMPONENTS == true
       controller.vm.provision "shell", run: "always", privileged: false, env: {
         "CONFIGS_FOLDER_PATH" => "/k8s/configs",

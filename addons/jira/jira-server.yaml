@@ -53,20 +53,20 @@ spec:
               path: /status
               port: http
               scheme: HTTP
-            initialDelaySeconds: 60
-            periodSeconds: 10
+            initialDelaySeconds: 300
+            periodSeconds: 60
             successThreshold: 1
-            timeoutSeconds: 15
+            timeoutSeconds: 30
           readinessProbe:
             failureThreshold: 3
             httpGet:
               path: /status
               port: http
               scheme: HTTP
-            initialDelaySeconds: 60
-            periodSeconds: 10
+            initialDelaySeconds: 300
+            periodSeconds: 60
             successThreshold: 1
-            timeoutSeconds: 15
+            timeoutSeconds: 30
       volumes:
         - name: jira-data
           persistentVolumeClaim:
