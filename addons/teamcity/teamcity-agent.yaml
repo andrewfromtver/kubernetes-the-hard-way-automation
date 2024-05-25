@@ -15,15 +15,38 @@ spec:
       labels:
         app: teamcity-agent
     spec:
+      initContainers:
+      - name: install-nodejs
+        image: ubuntu:20.04
+        command:
+        - sh
+        - -c
+        - |
+          apt-get update && \
+          apt-get install -y curl && \
+          curl -sL https://deb.nodesource.com/setup_20.x | bash - && \
+          apt-get install -y nodejs && \
+          node -v && \
+          cp /usr/bin/node /shared/node && \
+          cp /usr/bin/npm /shared/npm
+        volumeMounts:
+        - name: shared-bin
+          mountPath: /shared
       containers:
       - name: teamcity-agent
         image: jetbrains/teamcity-agent:2024.03.1-linux
         env:
         - name: SERVER_URL
           value: http://teamcity:8111
+        - name: AGENT_NAME
+          value: k8s-executor
         volumeMounts:
         - name: teamcity-agent-config
           mountPath: /data/teamcity_agent/conf
+        - name: shared-bin
+          mountPath: /usr/local/bin
       volumes:
       - name: teamcity-agent-config
+        emptyDir: {}
+      - name: shared-bin
         emptyDir: {}
