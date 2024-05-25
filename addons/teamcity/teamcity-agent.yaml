@@ -6,7 +6,7 @@ metadata:
   labels:
     app: teamcity-agent
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: teamcity-agent
