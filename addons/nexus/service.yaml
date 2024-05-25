@@ -13,3 +13,8 @@ spec:
       port: 8081
       targetPort: 8081
       nodePort: 30004
+    - name: docker
+      protocol: TCP
+      port: 9000
+      targetPort: 9000
+      nodePort: 39000
