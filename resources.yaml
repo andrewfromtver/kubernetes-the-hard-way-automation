@@ -1,7 +1,7 @@
 provider: hyperv
 nfs_cpu: 1
-nfs_ram: 2000
+nfs_ram: 512
 controller_cpu: 1
-controller_ram: 2000
-worker_cpu: 3
-worker_ram: 6000
+controller_ram: 768
+worker_cpu: 4
+worker_ram: 8192
