@@ -29,7 +29,7 @@ spec:
               mountPath: /var/atlassian/application-data/jira
       containers:
         - name: jira
-          image: atlassian/jira-software:9.13.1-ubi9-jdk17
+          image: atlassian/jira-core:9.16.0-ubi9-jdk17
           securityContext:
             runAsUser: 2001
             allowPrivilegeEscalation: false
