@@ -24,7 +24,7 @@ spec:
         - |
           apt-get update && \
           apt-get install -y curl && \
-          curl -sL https://deb.nodesource.com/setup_20.x | bash - && \
+          curl -sL https://deb.nodesource.com/setup_18.x | bash - && \
           apt-get install -y nodejs && \
           node -v && \
           cp /usr/bin/node /shared/node && \
