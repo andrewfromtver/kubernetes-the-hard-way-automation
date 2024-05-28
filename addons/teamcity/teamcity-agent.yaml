@@ -40,6 +40,13 @@ spec:
           value: http://teamcity:8111
         - name: AGENT_NAME
           value: k8s-executor
+        resources:
+          requests:
+            cpu: 500m
+            memory: 500Mi
+          limits:
+            cpu: 1
+            memory: 1Gi
         volumeMounts:
         - name: teamcity-agent-config
           mountPath: /data/teamcity_agent/conf

@@ -15,6 +15,6 @@ spec:
       nodePort: 30004
     - name: docker
       protocol: TCP
-      port: 9000
-      targetPort: 9000
-      nodePort: 39000
+      port: 2000
+      targetPort: 2000
+      nodePort: 32000

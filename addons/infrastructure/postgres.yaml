@@ -65,11 +65,11 @@ spec:
           image: postgres:15.6
           resources:
             requests:
+              cpu: 50m
+              memory: 50Mi
+            limits:
               cpu: 500m
               memory: 500Mi
-            limits:
-              cpu: 4
-              memory: 4Gi
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data

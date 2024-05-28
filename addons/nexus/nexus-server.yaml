@@ -31,8 +31,8 @@ spec:
               cpu: 500m
               memory: 500Mi
             limits:
-              cpu: 4
-              memory: 4Gi
+              cpu: 2
+              memory: 2Gi
           volumeMounts:
             - name: nexus-data
               mountPath: /nexus-data
