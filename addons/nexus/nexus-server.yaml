@@ -32,7 +32,7 @@ spec:
               memory: 500Mi
             limits:
               cpu: 2
-              memory: 2Gi
+              memory: 3Gi
           volumeMounts:
             - name: nexus-data
               mountPath: /nexus-data

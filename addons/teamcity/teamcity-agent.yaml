@@ -42,11 +42,11 @@ spec:
           value: k8s-executor
         resources:
           requests:
+            cpu: 250m
+            memory: 250Mi
+          limits:
             cpu: 500m
             memory: 500Mi
-          limits:
-            cpu: 1
-            memory: 1Gi
         volumeMounts:
         - name: teamcity-agent-config
           mountPath: /data/teamcity_agent/conf
